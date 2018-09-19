@@ -24,6 +24,7 @@ public class Group15_AS extends AcceptanceStrategy {
 	private double a;
 	private double b;
 	private double t;
+	private double c;
 
 	/**
 	 * Empty constructor for the BOA framework.
@@ -31,12 +32,13 @@ public class Group15_AS extends AcceptanceStrategy {
 	public Group15_AS() {
 	}
 
-	public Group15_AS(NegotiationSession negoSession, OfferingStrategy strat, double alpha, double beta, double gamma) {
+	public Group15_AS(NegotiationSession negoSession, OfferingStrategy strat, double alpha, double beta, double gamma, double cee) {
 		this.negotiationSession = negoSession;
 		this.offeringStrategy = strat;
 		this.a = alpha;
 		this.b = beta;
 		this.t = gamma;
+		this.c = cee;
 	}
 
 	@Override
@@ -49,17 +51,19 @@ public class Group15_AS extends AcceptanceStrategy {
 			a = parameters.get("a");
 			b = parameters.get("b");
 			t = parameters.get("t");
+			c = parameters.get("c");
 					
 		} else {
 			a = 1;
 			b = 0;
 			t = 0.99;
+			c = 0;
 		}
 	}
 
 	@Override
 	public String printParameters() {
-		String str = "[a: " + a + " b: " + b + " t: " + t + "]";
+		String str = "[a: " + a + " b: " + b + " t: " + t + " c: " + c + " ]";
 		return str;
 	}
 
@@ -72,7 +76,7 @@ public class Group15_AS extends AcceptanceStrategy {
 		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
 			return Actions.Accept;
 		}
-		else if ( negotiationSession.getTime() > t){
+		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c){
 			return Actions.Accept;
 		}
 		return Actions.Reject;
@@ -87,6 +91,7 @@ public class Group15_AS extends AcceptanceStrategy {
 		set.add(new BOAparameter("b", 0.0,
 				"Accept when the opponent's utility * a + b is greater than the utility of our current bid"));
 	    set.add(new BOAparameter("t", 0.99, "If time greater than t, then accept"));
+	    set.add(new BOAparameter("c", 0.0, "If time is greater than t and the opponent's utility is greater than c, accept"));
 
 		return set;
 	}

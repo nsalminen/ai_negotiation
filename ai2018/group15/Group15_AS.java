@@ -23,7 +23,7 @@ public class Group15_AS extends AcceptanceStrategy {
 
 	private double a;
 	private double b;
-	private double g;
+	private double t;
 
 	/**
 	 * Empty constructor for the BOA framework.
@@ -36,7 +36,7 @@ public class Group15_AS extends AcceptanceStrategy {
 		this.offeringStrategy = strat;
 		this.a = alpha;
 		this.b = beta;
-		this.g = gamma;
+		this.t = gamma;
 	}
 
 	@Override
@@ -48,18 +48,18 @@ public class Group15_AS extends AcceptanceStrategy {
 		if (parameters.get("a") != null || parameters.get("b") != null || parameters.get("g") != null) {
 			a = parameters.get("a");
 			b = parameters.get("b");
-			g = parameters.get("g");
+			t = parameters.get("t");
 					
 		} else {
 			a = 1;
 			b = 0;
-			g = 0.99;
+			t = 0.99;
 		}
 	}
 
 	@Override
 	public String printParameters() {
-		String str = "[a: " + a + " b: " + b + " g: " + g + "]";
+		String str = "[a: " + a + " b: " + b + " t: " + t + "]";
 		return str;
 	}
 
@@ -72,7 +72,7 @@ public class Group15_AS extends AcceptanceStrategy {
 		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
 			return Actions.Accept;
 		}
-		else if ( negotiationSession.getTime() > g){
+		else if ( negotiationSession.getTime() > t){
 			return Actions.Accept;
 		}
 		return Actions.Reject;

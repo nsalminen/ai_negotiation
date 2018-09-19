@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static java.lang.Math.pow;
+
 import genius.core.boaframework.AcceptanceStrategy;
 import genius.core.boaframework.Actions;
 import genius.core.boaframework.BOAparameter;
@@ -72,17 +74,24 @@ public class Group15_AS extends AcceptanceStrategy {
 		double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
 		double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails()
 				.getMyUndiscountedUtil();
-
+		
+		/*System.out.println("getTime is: " + negotiationSession.getTime() + "and the c is currently: " + (c - getCDiscount()));
+		*/ 
+		
 		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
 			return Actions.Accept;
 		}
-		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c){
+		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c - getCDiscount()){
 			return Actions.Accept;
 		}
 		else if (negotiationSession.getTime() > 0.99) {
 			return Actions.Accept;
 		}
 		return Actions.Reject;
+	}
+	
+	public double getCDiscount() {
+		return (c * pow(((negotiationSession.getTime() - t)/(1-t)), 2d));
 	}
 
 	@Override

@@ -56,8 +56,8 @@ public class Group15_AS extends AcceptanceStrategy {
 		} else {
 			a = 1;
 			b = 0;
-			t = 0.99;
-			c = 0;
+			t = 0.9;
+			c = 0.5;
 		}
 	}
 
@@ -79,6 +79,9 @@ public class Group15_AS extends AcceptanceStrategy {
 		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c){
 			return Actions.Accept;
 		}
+		else if (negotiationSession.getTime() > 0.99) {
+			return Actions.Accept;
+		}
 		return Actions.Reject;
 	}
 
@@ -90,8 +93,8 @@ public class Group15_AS extends AcceptanceStrategy {
 				"Accept when the opponent's utility * a + b is greater than the utility of our current bid"));
 		set.add(new BOAparameter("b", 0.0,
 				"Accept when the opponent's utility * a + b is greater than the utility of our current bid"));
-	    set.add(new BOAparameter("t", 0.99, "If time greater than t, then accept"));
-	    set.add(new BOAparameter("c", 0.0, "If time is greater than t and the opponent's utility is greater than c, accept"));
+	    set.add(new BOAparameter("t", 0.9, "If time greater than t, then accept"));
+	    set.add(new BOAparameter("c", 0.5, "If time is greater than t and the opponent's utility is greater than c, accept"));
 
 		return set;
 	}

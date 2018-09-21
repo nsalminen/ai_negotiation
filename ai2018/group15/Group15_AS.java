@@ -1,6 +1,5 @@
 package ai_negotiation.ai2018.group15;
 
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -15,11 +14,9 @@ import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 
 /**
- * This Acceptance Condition will accept an opponent bid if the utility is
- * higher than the bid the agent is ready to present
- * 
- * If the other party concedes, 
- * 
+	* This AS determines whether the agent should accept or reject the latest bid. Before the negotiation has 
+	* reached a time t, the agent will only accept the opponent's bid if its utility is higher than it would be 
+	* in their own next bid. After time t, the agent will accept any bid that is higher than some variable c.
  */
 public class Group15_AS extends AcceptanceStrategy {
 
@@ -69,14 +66,15 @@ public class Group15_AS extends AcceptanceStrategy {
 		return str;
 	}
 
+	/**
+	 * Determines whether the last bid should be accepted or rejected based on the AS.
+	 * @return An action object specifying Accept or Reject.
+	 */
 	@Override
 	public Actions determineAcceptability() {
 		double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
 		double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails()
 				.getMyUndiscountedUtil();
-		
-		/*System.out.println("getTime is: " + negotiationSession.getTime() + "and the c is currently: " + (c - getCDiscount()));
-		*/ 
 		
 		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
 			return Actions.Accept;
@@ -96,7 +94,6 @@ public class Group15_AS extends AcceptanceStrategy {
 
 	@Override
 	public Set<BOAparameter> getParameterSpec() {
-
 		Set<BOAparameter> set = new HashSet<BOAparameter>();
 		set.add(new BOAparameter("a", 1.0,
 				"Accept when the opponent's utility * a + b is greater than the utility of our current bid"));
@@ -104,7 +101,6 @@ public class Group15_AS extends AcceptanceStrategy {
 				"Accept when the opponent's utility * a + b is greater than the utility of our current bid"));
 	    set.add(new BOAparameter("t", 0.9, "If time greater than t, then accept"));
 	    set.add(new BOAparameter("c", 0.5, "If time is greater than t and the opponent's utility is greater than c, accept"));
-
 		return set;
 	}
 

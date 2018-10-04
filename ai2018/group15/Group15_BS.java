@@ -2,8 +2,10 @@ package ai_negotiation.ai2018.group15;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
+import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
@@ -39,7 +41,23 @@ public class Group15_BS extends OfferingStrategy {
 	private double e;
 	/** Outcome space */
 	private SortedOutcomeSpace outcomespace;
-
+	
+	/** Bid selector */
+	private BidSelector bs;
+	/** max window size */
+	private double maxWindowSize = 0.12;
+	/** max bid count in range*/
+	private int maxBids = 5;
+	/** concession amount */
+	private double concessSize = 0.06; 	
+	/** concession probability */
+	private int concessProba = 90;
+	
+	/** opponent last bid util */
+	private double opponentLastBidUtil = -1;
+	/** opponent last concession amount */
+	private double opponentLastConcessionAmount = 0;
+	
 	/**
 	 * Method which initializes the agent by setting all parameters. The
 	 * parameter "e" is the only parameter which is required.
@@ -53,6 +71,8 @@ public class Group15_BS extends OfferingStrategy {
 
 			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 			negotiationSession.setOutcomeSpace(outcomespace);
+			
+			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, concessSize);			 
 
 			this.e = parameters.get("e");
 
@@ -82,7 +102,7 @@ public class Group15_BS extends OfferingStrategy {
 
 	@Override
 	public BidDetails determineOpeningBid() {
-		return determineNextBid();
+		return bs.GetFirstBid();
 	}
 
 	/**
@@ -93,21 +113,47 @@ public class Group15_BS extends OfferingStrategy {
 	 */
 	@Override
 	public BidDetails determineNextBid() {
-		double time = negotiationSession.getTime();
+		/*double time = negotiationSession.getTime();
 		double utilityGoal;
-		utilityGoal = p(time);
+		utilityGoal = p(time);*/
+		
+		
+		// myAction can take values : 1 = update window, 2 = slide window (concession)
+		int myAction = 1;
+		if(didOpponentConcede() && randomConcede())
+			myAction = 2;
+		nextBid = bs.GetNextBid(myAction, opponentLastConcessionAmount);
 
-		// System.out.println("[e=" + e + ", Pmin = " +
-		// BilateralAgent.round2(Pmin) + "] t = " + BilateralAgent.round2(time)
-		// + ". Aiming for " + utilityGoal);
-
-		// if there is no opponent model available
-		if (opponentModel instanceof NoModel) {
-			nextBid = negotiationSession.getOutcomeSpace().getBidNearUtility(utilityGoal);
-		} else {
-			nextBid = omStrategy.getBid(outcomespace, utilityGoal);
-		}
 		return nextBid;
+	}
+	
+	/**
+	 * 
+	 * @return if opponent's bid was a conceeding bid, relative to the opponent's previous bid and the agent's utility function
+	 */
+	private boolean didOpponentConcede() {
+		if (!negotiationSession.getOpponentBidHistory().getHistory().isEmpty()) {
+			double opponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
+			if(opponentLastBidUtil < opponentBidUtil) {
+				if(opponentLastBidUtil != -1) {
+	            	opponentLastConcessionAmount = opponentBidUtil - opponentLastBidUtil;
+	            	System.out.println("Opponent conceeded!");
+	            	System.out.println(opponentLastConcessionAmount);
+				}
+	            opponentLastBidUtil = opponentBidUtil;
+	            if(opponentLastBidUtil != -1)
+	            	return true;
+			} else {
+				opponentLastBidUtil = opponentBidUtil;
+				return false;
+			}
+		}
+		return false;
+	}
+	
+	private boolean randomConcede() {
+		Random rng = new Random();
+		return rng.nextInt(100) > concessProba;
 	}
 
 	/**

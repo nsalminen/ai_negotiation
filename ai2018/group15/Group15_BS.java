@@ -52,18 +52,37 @@ public class Group15_BS extends OfferingStrategy {
 	/** Bid selector */
 	private BidSelector bs;
 	/** max window size */
-	private double maxWindowSize = 0.08;
+	private double maxWindowSize = 0.05;
 	/** max bid count in range*/
 	private int maxBids = 5;
+	
 	/** concession amount */
-	private double maxConcessionAmount = 0.06; 	
-	/** concession percentage when opponent makes a concession */
-	private int concessProba = 15;
+	private double maxConcessionAmount = 0.05; 	
+	/** concession probability when opponent makes a concession */
+	private int concessProba = 75;
+	/** increase amount */
+	private double maxIncreaseAmount = 0.04; 	
+	/** increase probability when opponent makes an offer with increased utility */
+	private int increaseProba = 75;
 	
 	/** opponent last bid util */
 	private double opponentLastBidUtil = -1;
 	/** opponent last concession amount */
 	private double opponentLastConcessionAmount = 0;
+	
+	/** before last opponent bid util to compare with last opponent bid util to see if opponent conceded or not */
+	private double beforeLastOpponentBidUtil;
+	/** most recent bid from opponent */
+	private double lastOpponentBidUtil;
+	/** minimum difference in opponent bid util before it is considered a concession or increase*/
+	private double minimalUtilDifference = 0.02;
+	
+	/** minimum lower bound of sliding window */
+	private double minimumLowerBound = 0.85;
+	
+	
+	/** rng */
+	private Random rng;
 	
 	/**
 	 * Method which initializes the agent by setting all parameters. The
@@ -79,9 +98,12 @@ public class Group15_BS extends OfferingStrategy {
 			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 			negotiationSession.setOutcomeSpace(outcomespace);
 			
-			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount);			 
+			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
 
 			bestOpponentBids = null; 
+			beforeLastOpponentBidUtil = -1;
+			
+			rng = new Random();
 			
 			this.e = parameters.get("e");
 			
@@ -136,38 +158,40 @@ public class Group15_BS extends OfferingStrategy {
 
 		} 
 		else { //enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
-			// myAction can take values : 1 = normal hard headed round, 2 = slide window (concession)
+			// myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
 			int myAction = 1;
-			if(didOpponentConcede() && randomConcede())
-				myAction = 2;
-			nextBid = bs.GetNextBid(myAction, opponentLastConcessionAmount);
+			double opponentBidDiff = opponentBidDifference();
+			if(opponentBidDiff < (-1 * minimalUtilDifference)) {
+				if(randomConcede() && bs.getLower() > minimumLowerBound)
+					myAction = 2;
+			}
+			else if (opponentBidDiff > minimalUtilDifference)
+			{
+				if(randomIncrease())
+					myAction = 3;
+			}
+			nextBid = bs.GetNextBid(myAction, opponentBidDiff);
 		} 
 		
 		return nextBid;
 	}
 	
-	/**
+	/***
 	 * 
-	 * @return if opponent's bid was a conceeding bid, relative to the opponent's previous bid and the agent's utility function
+	 * @return difference in util between opponent's last two bids
 	 */
-	private boolean didOpponentConcede() {
-		if (!negotiationSession.getOpponentBidHistory().getHistory().isEmpty()) {
-			double opponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
-			if(opponentLastBidUtil < opponentBidUtil) {
-				if(opponentLastBidUtil != -1) {
-	            	opponentLastConcessionAmount = opponentBidUtil - opponentLastBidUtil;
-	            	System.out.println("Opponent conceeded!");
-	            	System.out.println(opponentLastConcessionAmount);
-				}
-	            opponentLastBidUtil = opponentBidUtil;
-	            if(opponentLastBidUtil != -1)
-	            	return true;
-			} else {
-				opponentLastBidUtil = opponentBidUtil;
-				return false;
-			}
+	private double opponentBidDifference() {
+		System.out.println("Getting bid diff");
+		if (negotiationSession.getOpponentBidHistory().getHistory().isEmpty()) 
+			return 0;
+		lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
+		if(beforeLastOpponentBidUtil == -1) {
+			beforeLastOpponentBidUtil = lastOpponentBidUtil;
+			return 0;
 		}
-		return false;
+		double difference = lastOpponentBidUtil - beforeLastOpponentBidUtil;
+		beforeLastOpponentBidUtil = lastOpponentBidUtil;
+		return difference;
 	}
 	
 	/***
@@ -175,8 +199,17 @@ public class Group15_BS extends OfferingStrategy {
 	 * @return if agent will concede this round
 	 */
 	private boolean randomConcede() {
-		Random rng = new Random();
+		System.out.println("ranConcede");
 		return rng.nextInt(100) < concessProba;
+	}
+	
+	/***
+	 * 
+	 * @return if agent will increase the utility of its offer this round
+	 */
+	private boolean randomIncrease() {
+		System.out.println("ranIncrease");
+		return rng.nextInt(100) < increaseProba;
 	}
 
 	/**

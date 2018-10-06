@@ -24,6 +24,18 @@ public class SlidingWindow {
 		}
 	}
 	
+	public void slideUp(double delta) {
+		if(delta < (1-getUpper())) {//if enough space to slide
+			setUpper(getUpper() + delta);
+			setLower(getLower() + delta);
+		} else if(getUpper() < 1){//if not enough space set window ub to 1
+			setUpper(1);
+			setLower(1-maxSize);
+		} else {
+			System.out.println("Cannot slide window down - no space");
+		}
+	}
+	
 	public void setUpper(double u) {
 		r.setUpperbound(u);
 	}

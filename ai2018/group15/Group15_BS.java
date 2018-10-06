@@ -20,6 +20,8 @@ import genius.core.timeline.Timeline.Type;
 import genius.core.timeline.DiscreteTimeline; 
 import genius.core.BidHistory; 
 
+
+
 /**
  * This is an abstract class used to implement a TimeDependentAgent Strategy
  * adapted from [1] [1] S. Shaheen Fatima Michael Wooldridge Nicholas R.
@@ -46,8 +48,8 @@ public class Group15_BS extends OfferingStrategy {
 	private double e;
 	/** Outcome space */
 	private SortedOutcomeSpace outcomespace;
-	/** Best Opponent's bids */ 
-	private List<BidDetails> bestOpponentBids; 
+	/** Best Opponent's bid */  
+	private BidDetails bestOpponentBid;
 	
 	/** Bid selector */
 	private BidSelector bs;
@@ -99,8 +101,8 @@ public class Group15_BS extends OfferingStrategy {
 			negotiationSession.setOutcomeSpace(outcomespace);
 			
 			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
-
-			bestOpponentBids = null; 
+ 
+			bestOpponentBid = null;
 			beforeLastOpponentBidUtil = -1;
 			
 			rng = new Random();
@@ -146,15 +148,16 @@ public class Group15_BS extends OfferingStrategy {
 	public BidDetails determineNextBid() {
 		double time = negotiationSession.getTime(); 
 
-		if(time > 0.95) { //near time limit -> conceding strategy
-			if(bestOpponentBids == null) { 
+		if(time > 0.99) { //near time limit -> conceding strategy
+			if(bestOpponentBid == null) { 
 				BidHistory opponentBids = negotiationSession.getOpponentBidHistory(); 
-					bestOpponentBids = opponentBids.getNBestBids(5); 
+				bestOpponentBid = opponentBids.getBestBidDetails();
+					
 			} 
-			//we get 5 bids, and start with offering the bid with the bid with the highest utility for us 
-			//if the opponent does not accept (i.e. does not have a monotonically decreasing offering strategy 
-			//we try some other bids as time goes down. 
-			nextBid = bestOpponentBids.get((int)(time-0.95)); 
+
+			nextBid = bestOpponentBid;
+			
+			
 
 		} 
 		else { //enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy

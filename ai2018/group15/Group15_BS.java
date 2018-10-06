@@ -1,6 +1,7 @@
 package ai_negotiation.ai2018.group15;
 
 import java.util.HashSet;
+import java.util.List; 
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -14,6 +15,10 @@ import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
+import genius.core.timeline.TimeLineInfo; 
+import genius.core.timeline.Timeline.Type; 
+import genius.core.timeline.DiscreteTimeline; 
+import genius.core.BidHistory; 
 
 /**
  * This is an abstract class used to implement a TimeDependentAgent Strategy
@@ -41,17 +46,19 @@ public class Group15_BS extends OfferingStrategy {
 	private double e;
 	/** Outcome space */
 	private SortedOutcomeSpace outcomespace;
+	/** Best Opponent's bids */ 
+	private List<BidDetails> bestOpponentBids; 
 	
 	/** Bid selector */
 	private BidSelector bs;
 	/** max window size */
-	private double maxWindowSize = 0.12;
+	private double maxWindowSize = 0.08;
 	/** max bid count in range*/
 	private int maxBids = 5;
 	/** concession amount */
-	private double concessSize = 0.06; 	
-	/** concession probability */
-	private int concessProba = 90;
+	private double maxConcessionAmount = 0.06; 	
+	/** concession percentage when opponent makes a concession */
+	private int concessProba = 15;
 	
 	/** opponent last bid util */
 	private double opponentLastBidUtil = -1;
@@ -72,10 +79,12 @@ public class Group15_BS extends OfferingStrategy {
 			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 			negotiationSession.setOutcomeSpace(outcomespace);
 			
-			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, concessSize);			 
+			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount);			 
 
+			bestOpponentBids = null; 
+			
 			this.e = parameters.get("e");
-
+			
 			if (parameters.get("k") != null)
 				this.k = parameters.get("k");
 			else
@@ -102,7 +111,7 @@ public class Group15_BS extends OfferingStrategy {
 
 	@Override
 	public BidDetails determineOpeningBid() {
-		return bs.GetFirstBid();
+		return bs.getFirstBid();
 	}
 
 	/**
@@ -113,17 +122,27 @@ public class Group15_BS extends OfferingStrategy {
 	 */
 	@Override
 	public BidDetails determineNextBid() {
-		/*double time = negotiationSession.getTime();
-		double utilityGoal;
-		utilityGoal = p(time);*/
-		
-		
-		// myAction can take values : 1 = update window, 2 = slide window (concession)
-		int myAction = 1;
-		if(didOpponentConcede() && randomConcede())
-			myAction = 2;
-		nextBid = bs.GetNextBid(myAction, opponentLastConcessionAmount);
+		double time = negotiationSession.getTime(); 
 
+		if(time > 0.95) { //near time limit -> conceding strategy
+			if(bestOpponentBids == null) { 
+				BidHistory opponentBids = negotiationSession.getOpponentBidHistory(); 
+					bestOpponentBids = opponentBids.getNBestBids(5); 
+			} 
+			//we get 5 bids, and start with offering the bid with the bid with the highest utility for us 
+			//if the opponent does not accept (i.e. does not have a monotonically decreasing offering strategy 
+			//we try some other bids as time goes down. 
+			nextBid = bestOpponentBids.get((int)(time-0.95)); 
+
+		} 
+		else { //enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
+			// myAction can take values : 1 = normal hard headed round, 2 = slide window (concession)
+			int myAction = 1;
+			if(didOpponentConcede() && randomConcede())
+				myAction = 2;
+			nextBid = bs.GetNextBid(myAction, opponentLastConcessionAmount);
+		} 
+		
 		return nextBid;
 	}
 	
@@ -151,9 +170,13 @@ public class Group15_BS extends OfferingStrategy {
 		return false;
 	}
 	
+	/***
+	 * 
+	 * @return if agent will concede this round
+	 */
 	private boolean randomConcede() {
 		Random rng = new Random();
-		return rng.nextInt(100) > concessProba;
+		return rng.nextInt(100) < concessProba;
 	}
 
 	/**

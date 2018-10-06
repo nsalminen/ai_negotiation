@@ -13,14 +13,10 @@ public class SlidingWindow {
 	}
 	
 	public void slideDown(double delta) {
-		System.out.println("delta");
-		System.out.println(delta);
-		System.out.println("lb");
-		System.out.println(getLower());
-		if(delta < getLower()) {
+		if(delta < getLower()) {//if enough space to slide
 			setUpper(getUpper() - delta);
 			setLower(getLower() - delta);
-		} else if(getLower() > 0){
+		} else if(getLower() > 0){//if not enough space set window lb to 0
 			setUpper(maxSize);
 			setLower(0);
 		} else {
@@ -46,17 +42,6 @@ public class SlidingWindow {
 	
 	public Range getRange() {
 		return r;
-	}
-	
-	/***
-	 * distance is between (lower, next bid)
-	 * @return true if window can grow to include next concessive bid
-	 */
-	public boolean canGrow(double distance) {
-		if(getUpper() - getLower() + distance >= maxSize) {
-			return false;
-		} 
-		return true;
 	}
 	
 }

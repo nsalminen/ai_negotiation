@@ -27,6 +27,9 @@ public class BidSelector {
 	/** Bid Details List */
 	private List<BidDetails> BidList;
 	
+	/** rng */
+	private Random rng;
+	
 	public BidSelector(SortedOutcomeSpace ocs, double maxWindowSize, int maxBids, double concessSize) {
 		outcomespace = ocs;
 		sw = new SlidingWindow(outcomespace.getMaxBidPossible().getMyUndiscountedUtil(), maxWindowSize);
@@ -34,36 +37,15 @@ public class BidSelector {
 		maxBidCount = maxBids;
 		maxSwSize = maxWindowSize;
 		maxConcessionAmount = concessSize;
+		rng = new Random();
 	}
 	
-	/***
-	 * 
-	 * @return distance between sliding window lower bound and closest conceding bid
-	 */
-	private double getDistanceLowerBoundToClosestConcedingBid() {
-		double lb = sw.getLower();
-		//sort bidlist best to worst
-		Collections.sort(BidList, new BidDetailsSorterUtility());
-		double worstBidUtil = BidList.get(BidList.size() - 1).getMyUndiscountedUtil();
-		double closestConcedingUtil = outcomespace.getAllOutcomes().get(outcomespace.getIndexOfBidNearUtility(worstBidUtil)+1).getMyUndiscountedUtil();
-		
-		/*System.out.println(">>> Calculating distance lb - next bid");
-		System.out.println("lb:");
-		System.out.println(lb);
-		System.out.println("worstBidUtil:");
-		System.out.println(worstBidUtil);
-		System.out.println("closestConcedingUtil:");
-		System.out.println(closestConcedingUtil);*/
-		
-		
-		return lb - closestConcedingUtil;
-	}
 	
 	/***
 	 * 
 	 * @return best ranked bid
 	 */
-	public BidDetails GetFirstBid() {
+	public BidDetails getFirstBid() {
 		return BidList.get(0);
 	}
 	
@@ -72,10 +54,7 @@ public class BidSelector {
 	 * @param action 1 = normal update window, 2 = slide window
 	 */
 	public BidDetails GetNextBid(int action, double newConcessionAmount) {
-		Update(action, newConcessionAmount);
-		/*System.out.println("***** Getting next bid *****");
-		System.out.println("BidList size:");
-		System.out.println(BidList.size());*/
+		update(action, newConcessionAmount);
 		return getRandomBid();
 	}
 	
@@ -84,68 +63,60 @@ public class BidSelector {
 	 * update window
 	 * update bidlist
 	 */
-	public void Update(int action, double newConcessionAmount) {
+	public void update(int action, double newConcessionAmount) {
 		concessionAmount = newConcessionAmount;
-		/*System.out.println("Chosen action id:");
-		System.out.println(action);*/
+
 		if(action == 1) {
-			updateWindow();
+			//make sure window is max size
+			sw.setLower(sw.getUpper()-maxSwSize);
 		} else if (action == 2) {
-			slideWindow();
+			//perform concession
+			performConcession();
 		}
 		updateBidList();	
-		System.out.println("win size");
-		System.out.println(sw.getUpper() - sw.getLower());
-		System.out.println("upper");
-		System.out.println(sw.getUpper());
-		System.out.println("lower");
-		System.out.println(sw.getLower());
+
+		printBidList();
+	}
+	
+	/***
+	 * debugging purposes
+	 */
+	private void printBidList() {
+		System.out.println(">>> BidList.size(): " + BidList.size());
 		System.out.println(">> bid utils");
-		
-		for(int i = 0; i < BidList.size(); i++) {
+		for(int i = 0; i < Math.min(BidList.size(), maxBidCount); i++) {
 			System.out.println(BidList.get(i).getMyUndiscountedUtil());
 		}
 	}
-	
-	/**
-	 * slide the window...
-	 * many ways to do this (rm best then add new worst?, slide whole window by amount, set new upper bound and let update() expand the window)
-	 * make sure window has atleast 1 bid
-	 * 
-	 * not good! isBidListEmpty() doesnt take into account if max window size has been reached etc.. window sliding still needs some thought
+
+	/***
+	 * slide window down (perform concession)
 	 */
-	private void slideWindow() {
-		System.out.println("Sliding down window");
+	private void performConcession() {
+		//todo: stay above reservation value?
+		
+		System.out.println("performing concession:");
+		
 		sw.slideDown(Math.min(concessionAmount, maxConcessionAmount));
+		
 		updateBidList();
 		if(isBidListEmpty()) {
-			slideWindow();
+			if(sw.getLower() > 0) { //if possible to slide window down more do it
+				performConcession();
+			} else {
+				outcomespace.getMinBidPossible(); //get worst
+			}
 		}
 	}
 	
-	private BidDetails getRandomBid() {
-		Random rng = new Random();
-		return BidList.get(rng.nextInt(BidList.size()));
-	}
-	
-	
 	/***
-	 * expand window till max size
+	 * 
+	 * @return randomly selected bid from bidlist[0:maxBidCount]
 	 */
-	private void updateWindow() {
-		double distanceToNext = getDistanceLowerBoundToClosestConcedingBid();
-		System.out.println(">>> Updating window");
-		System.out.println("Distance to next:");
-		System.out.println(distanceToNext);
-		/*System.out.println("Max window size");
-		System.out.println(maxSwSize);*/
-		System.out.println("Can expand:");
-		System.out.println(canExpandWindow(distanceToNext));
-		//expand window to add next bid
-		if(canExpandWindow(distanceToNext)) {
-			sw.setLower(sw.getLower()-distanceToNext);
-		}	
+	private BidDetails getRandomBid() {
+		return BidList.get(rng.nextInt(Math.min(BidList.size(), maxBidCount)));
 	}
+	
 	
 	/***
 	 * update bid list for new range
@@ -154,16 +125,6 @@ public class BidSelector {
 		BidList = outcomespace.getBidsinRange(sw.getRange());
 	}
 	
-	
-	
-	
-	/***
-	 * 
-	 * @return if window can be expanded
-	 */
-	private boolean canExpandWindow(double distance) {		
-		return !isBidListFull() && sw.canGrow(distance);
-	}
 	
 	private boolean isBidListEmpty() {
 		if(BidList.size() == 0) {
@@ -182,6 +143,5 @@ public class BidSelector {
 		}
 		return false;
 	}
-	
 	
 }

@@ -1,9 +1,12 @@
 package ai_negotiation.ai2018.group15;
 
 import java.util.HashSet;
+import java.util.List; 
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
+import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
@@ -12,6 +15,12 @@ import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
+import genius.core.timeline.TimeLineInfo; 
+import genius.core.timeline.Timeline.Type; 
+import genius.core.timeline.DiscreteTimeline; 
+import genius.core.BidHistory; 
+
+
 
 /**
  * This is an abstract class used to implement a TimeDependentAgent Strategy
@@ -39,7 +48,44 @@ public class Group15_BS extends OfferingStrategy {
 	private double e;
 	/** Outcome space */
 	private SortedOutcomeSpace outcomespace;
-
+	/** Best Opponent's bid */  
+	private BidDetails bestOpponentBid;
+	
+	/** Bid selector */
+	private BidSelector bs;
+	/** max window size */
+	private double maxWindowSize = 0.05;
+	/** max bid count in range*/
+	private int maxBids = 5;
+	
+	/** concession amount */
+	private double maxConcessionAmount = 0.05; 	
+	/** concession probability when opponent makes a concession */
+	private int concessProba = 75;
+	/** increase amount */
+	private double maxIncreaseAmount = 0.04; 	
+	/** increase probability when opponent makes an offer with increased utility */
+	private int increaseProba = 75;
+	
+	/** opponent last bid util */
+	private double opponentLastBidUtil = -1;
+	/** opponent last concession amount */
+	private double opponentLastConcessionAmount = 0;
+	
+	/** before last opponent bid util to compare with last opponent bid util to see if opponent conceded or not */
+	private double beforeLastOpponentBidUtil;
+	/** most recent bid from opponent */
+	private double lastOpponentBidUtil;
+	/** minimum difference in opponent bid util before it is considered a concession or increase*/
+	private double minimalUtilDifference = 0.02;
+	
+	/** minimum lower bound of sliding window */
+	private double minimumLowerBound = 0.85;
+	
+	
+	/** rng */
+	private Random rng;
+	
 	/**
 	 * Method which initializes the agent by setting all parameters. The
 	 * parameter "e" is the only parameter which is required.
@@ -53,9 +99,16 @@ public class Group15_BS extends OfferingStrategy {
 
 			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 			negotiationSession.setOutcomeSpace(outcomespace);
-
+			
+			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
+ 
+			bestOpponentBid = null;
+			beforeLastOpponentBidUtil = -1;
+			
+			rng = new Random();
+			
 			this.e = parameters.get("e");
-
+			
 			if (parameters.get("k") != null)
 				this.k = parameters.get("k");
 			else
@@ -82,7 +135,7 @@ public class Group15_BS extends OfferingStrategy {
 
 	@Override
 	public BidDetails determineOpeningBid() {
-		return determineNextBid();
+		return bs.getFirstBid();
 	}
 
 	/**
@@ -93,21 +146,73 @@ public class Group15_BS extends OfferingStrategy {
 	 */
 	@Override
 	public BidDetails determineNextBid() {
-		double time = negotiationSession.getTime();
-		double utilityGoal;
-		utilityGoal = p(time);
+		double time = negotiationSession.getTime(); 
 
-		// System.out.println("[e=" + e + ", Pmin = " +
-		// BilateralAgent.round2(Pmin) + "] t = " + BilateralAgent.round2(time)
-		// + ". Aiming for " + utilityGoal);
+		if(time > 0.99) { //near time limit -> conceding strategy
+			if(bestOpponentBid == null) { 
+				BidHistory opponentBids = negotiationSession.getOpponentBidHistory(); 
+				bestOpponentBid = opponentBids.getBestBidDetails();
+					
+			} 
 
-		// if there is no opponent model available
-		if (opponentModel instanceof NoModel) {
-			nextBid = negotiationSession.getOutcomeSpace().getBidNearUtility(utilityGoal);
-		} else {
-			nextBid = omStrategy.getBid(outcomespace, utilityGoal);
-		}
+			nextBid = bestOpponentBid;
+			
+			
+
+		} 
+		else { //enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
+			// myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
+			int myAction = 1;
+			double opponentBidDiff = opponentBidDifference();
+			if(opponentBidDiff < (-1 * minimalUtilDifference)) {
+				if(randomConcede() && bs.getLower() > minimumLowerBound)
+					myAction = 2;
+			}
+			else if (opponentBidDiff > minimalUtilDifference)
+			{
+				if(randomIncrease())
+					myAction = 3;
+			}
+			nextBid = bs.GetNextBid(myAction, opponentBidDiff);
+		} 
+		
 		return nextBid;
+	}
+	
+	/***
+	 * 
+	 * @return difference in util between opponent's last two bids
+	 */
+	private double opponentBidDifference() {
+		System.out.println("Getting bid diff");
+		if (negotiationSession.getOpponentBidHistory().getHistory().isEmpty()) 
+			return 0;
+		lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
+		if(beforeLastOpponentBidUtil == -1) {
+			beforeLastOpponentBidUtil = lastOpponentBidUtil;
+			return 0;
+		}
+		double difference = lastOpponentBidUtil - beforeLastOpponentBidUtil;
+		beforeLastOpponentBidUtil = lastOpponentBidUtil;
+		return difference;
+	}
+	
+	/***
+	 * 
+	 * @return if agent will concede this round
+	 */
+	private boolean randomConcede() {
+		System.out.println("ranConcede");
+		return rng.nextInt(100) < concessProba;
+	}
+	
+	/***
+	 * 
+	 * @return if agent will increase the utility of its offer this round
+	 */
+	private boolean randomIncrease() {
+		System.out.println("ranIncrease");
+		return rng.nextInt(100) < increaseProba;
 	}
 
 	/**

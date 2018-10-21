@@ -16,7 +16,7 @@ import genius.core.boaframework.OpponentModel;
  * This class uses an opponent model to determine the next bid for the opponent,
  * while taking the opponent's preferences into account. The opponent model is
  * used to select the best bid.
- * 
+ *
  */
 public class BestBid extends OMStrategy {
 
@@ -25,12 +25,14 @@ public class BestBid extends OMStrategy {
 	 * exactly one as a match sometimes lasts slightly longer.
 	 */
 	double updateThreshold = 1.1;
+	//Main parameter of this program,  it is a time value after the threshold, the
+	//OpponentModel is not updated anymore. 1.1 is used as default value
 
 	/**
 	 * Initializes the opponent model strategy. If a value for the parameter t
 	 * is given, then it is set to this value. Otherwise, the default value is
 	 * used.
-	 * 
+	 *
 	 * @param negotiationSession
 	 *            state of the negotiation.
 	 * @param model
@@ -52,7 +54,7 @@ public class BestBid extends OMStrategy {
 	/**
 	 * Returns the best bid for the opponent given a set of similarly preferred
 	 * bids.
-	 * 
+	 *
 	 * @param list
 	 *            of the bids considered for offering.
 	 * @return bid to be offered to opponent.
@@ -73,8 +75,9 @@ public class BestBid extends OMStrategy {
 		boolean allWereZero = true;
 		// 3. Determine the best bid
 		for (BidDetails bid : allBids) {
-			double evaluation = model.getBidEvaluation(bid.getBid());
-			if (evaluation > 0.0001) {
+			double evaluation = model.getBidEvaluation(bid.getBid());//calls the function
+			//of the OpponentModel we need to implement.
+			if (evaluation > 0.0001) {//Won't consider the bid is the utility is 0
 				allWereZero = false;
 			}
 			if (evaluation > bestUtil) {
@@ -93,7 +96,7 @@ public class BestBid extends OMStrategy {
 	/**
 	 * The opponent model may be updated, unless the time is higher than a given
 	 * constant.
-	 * 
+	 *
 	 * @return true if model may be updated.
 	 */
 	@Override

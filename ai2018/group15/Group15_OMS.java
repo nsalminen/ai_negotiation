@@ -43,7 +43,7 @@ public class Group15_OMS extends OMStrategy {
 	 * @param negotiationSession
 	 *            state of the negotiation.
 	 * @param model
-	 *            opponent model used in conjunction with this opponent modeling
+	 *            opponent model used in conjunction with this opponent modelling
 	 *            strategy.
 	 * @param parameters
 	 *            set of parameters for this opponent model strategy.
@@ -104,7 +104,7 @@ public class Group15_OMS extends OMStrategy {
 		//Now randomly select a bid from the top N.
 		//(Indexing starts at 0 so we want to generate random numbers from 0 to N-1 for the top N)
 		int randomBidIndex = (int)(Math.random() * nBids);
-		System.out.println(randomBidIndex);
+		//System.out.println(randomBidIndex);
 		Bid bestOpponentBid = opponentBids.get(randomBidIndex).getBid();
 		
 		//Now return this bid in the form for our agent.

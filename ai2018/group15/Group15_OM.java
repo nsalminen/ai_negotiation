@@ -108,29 +108,29 @@ public class Group15_OM extends OpponentModel {
 			return;
 		}
 		
-		//add the most recent opp bid
+		// Add the most recent opponent bid
 		BidDetails oppBid = negotiationSession.getOpponentBidHistory()
 				.getHistory()
 				.get(negotiationSession.getOpponentBidHistory().size() - 1);
 		oppBidSet.add(oppBid);
 		
-		//if the set is full perform comparison
+		// Check if the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
 			System.out.println("> current opp bid set is full");
 			
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
 			Set<Integer> noConcedeSet = new HashSet<Integer>();
-			//per issue perform pval test and compare new set's estimated utility with previous set's new estimated utility
+			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
 			boolean concession = false;
 			
 			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
-				//compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
+				// Compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
 				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
 				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
 				
 				//todo pval test x^2 - test(fc = prevfc)
 				
-				//loop over all issues
+				// Loop over all issues
 				for(Integer i : issueSet) {
 					if(false) { //todo null hypothesis
 						noConcedeSet.add(i);
@@ -140,7 +140,9 @@ public class Group15_OM extends OpponentModel {
 						System.out.println("EU: " + EU);
 						int prevEU = estimateSetUtility(prevFc.get(i), i);
 						System.out.println("prevEU: " + prevEU);
-						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
+
+						// If a new estimated utility is lower, then a concession has been made
+						concession = (EU < prevEU) ? true : concession;
 						System.out.println("Concession: " + concession);
 					}
 				}
@@ -157,7 +159,7 @@ public class Group15_OM extends OpponentModel {
 				}
 			}
 			
-			// prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
+			// Prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
 			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
 			oppBidSet.clear();
 		}

@@ -103,21 +103,28 @@ public class Group15_OM extends OpponentModel {
 		if(oppBidSet.size() == bidSetSize) {
 			System.out.println("> current opp bid set is full");
 			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
-				//compare the sets
+				//compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
 				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
 				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
 				
+				//per issue perform pval test and compare new set's estimated utility with previous set's new estimated utility
+				boolean concession = false;
+				
 				//todo pval test x^2 - test(fc = prevfc)
-				if(false) { //todo null hypothesis
-					
-				} else { //null hypothesis rejected, check for concession
-					System.out.println("***** Estimating utility");
-					int EU = estimateSetUtility(fc);
-					System.out.println("EU: " + EU);
-					int prevEU = estimateSetUtility(prevFc);
-					System.out.println("prevEU: " + prevEU);
-					boolean concession = (EU < prevEU) ? true : false; //if new estimated utility is lower then a concession has been made
-					System.out.println("Concession: " + concession);
+				
+				//loop over all issues
+				for(Integer i : oppBid.getBid().getValues().keySet()) {
+					if(false) { //todo null hypothesis
+						
+					} else { //null hypothesis rejected, check for concession
+						System.out.println("***** Estimating utility *****");
+						int EU = estimateSetUtility(fc.get(i), i);
+						System.out.println("EU: " + EU);
+						int prevEU = estimateSetUtility(prevFc.get(i), i);
+						System.out.println("prevEU: " + prevEU);
+						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
+						System.out.println("Concession: " + concession);
+					}
 				}
 			} 
 			// prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
@@ -130,19 +137,17 @@ public class Group15_OM extends OpponentModel {
 	
 	/***
 	 * 
-	 * @param fcount frequency count of a set
+	 * @param fcount value frequency count of a set of bids for a specific issue
 	 * @return the estimated utility (not scaled) depending on fcount
 	 */
-	public int estimateSetUtility(HashMap<Integer, HashMap<Value, Integer>> fcount) {
+	public int estimateSetUtility(HashMap<Value, Integer> fcount, int issueNumber) {
 		int result = 0;
 		ArrayList<BidDetails> allOppBids = (ArrayList<BidDetails>) negotiationSession.getOpponentBidHistory().getHistory();
 		for(BidDetails bidDetails : allOppBids) { // loop over all bids
 			Bid bid = bidDetails.getBid();
-			for(Integer issue : bid.getValues().keySet()) { // loop over all issues
-				Value bidIssueValue = bid.getValue(issue);
-				if(fcount.get(issue).containsKey(bidIssueValue)) {
-					result += fcount.get(issue).get(bidIssueValue); //add frequency count to result
-				}
+			Value bidIssueValue = bid.getValue(issueNumber);
+			if(fcount.containsKey(bidIssueValue)) {
+				result += fcount.get(bidIssueValue); //add frequency count to result
 			}
 		}
 		return result;

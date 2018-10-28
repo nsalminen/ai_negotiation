@@ -1,6 +1,7 @@
 package ai2018.group15;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,6 +21,9 @@ import genius.core.issue.ValueDiscrete;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.Evaluator;
 import genius.core.utility.EvaluatorDiscrete;
+import agents.org.apache.commons.math.MathException;
+import agents.org.apache.commons.math.stat.inference.ChiSquareTestImpl;
+
 
 /**
  * BOA framework implementation of the HardHeaded Frequecy Model.
@@ -32,11 +36,10 @@ import genius.core.utility.EvaluatorDiscrete;
  * adapted the hard headed frequency model using the paper [...] to compare sets of bids instead of on a pair basis
  */
 public class Group15_OM extends OpponentModel {
-	
 	// The constant factor in the weight update function
-	private double alpha;
-	// The constant factor in the weight update function
-	private double beta;
+		private double alpha;
+		// The constant factor in the weight update function
+		private double beta;
 	/*
 	 * the learning coefficient is the weight that is added each turn to the
 	 * issue weights which changed. It's a trade-off between concession speed
@@ -58,6 +61,8 @@ public class Group15_OM extends OpponentModel {
 	
 	private ArrayList<BidDetails> oppBidSet;
 	private ArrayList<BidDetails> prevOppBidSet;
+	
+	ChiSquareTestImpl test;
 
 	@Override
 	public void init(NegotiationSession negotiationSession,
@@ -100,6 +105,7 @@ public class Group15_OM extends OpponentModel {
 
 		initializeModel();
 
+		test = new ChiSquareTestImpl();
 	}
 
 	@Override
@@ -108,46 +114,65 @@ public class Group15_OM extends OpponentModel {
 			return;
 		}
 		
-		// Add the most recent opponent bid
+		//add the most recent opp bid
 		BidDetails oppBid = negotiationSession.getOpponentBidHistory()
 				.getHistory()
 				.get(negotiationSession.getOpponentBidHistory().size() - 1);
 		oppBidSet.add(oppBid);
 		
-		// Check if the set is full perform comparison
+		//if the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
-			System.out.println("> current opp bid set is full");
-			
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
 			Set<Integer> noConcedeSet = new HashSet<Integer>();
-			
 			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
 			boolean concession = false;
-			
 			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
-				// Compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
+				//compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
 				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
 				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
 				
-				//todo pval test x^2 - test(fc = prevfc)
-				
-				// Loop over all issues
-				for(Integer i : issueSet) {
-					if(false) { //todo null hypothesis
+				//loop over all issues
+				for(Integer i : oppBid.getBid().getValues().keySet()) {
+					HashMap<Value, Integer> frequencyCount = fc.get(i);
+					HashMap<Value, Integer> prevFrequencyCount = prevFc.get(i);
+					
+					//prepare test
+					double[] expected = new double[frequencyCount.keySet().size()];
+					long[] observed = new long[frequencyCount.keySet().size()];		
+					Arrays.fill(expected, 0);
+					Arrays.fill(observed, 0);
+					int iteration = 0;
+					for(Value v : frequencyCount.keySet()) {
+						expected[iteration] = frequencyCount.get(v);
+						if(prevFrequencyCount.containsKey(v)) { // frequencyCount can contain new values not present in prevFrequencyCount
+							observed[iteration] = prevFrequencyCount.get(v);
+						} else {
+							observed[iteration] = 0;
+						}
+						iteration++;
+					}
+
+					double testResult = 0;
+					if(expected.length >= 2 && expected.length == observed.length) {
+						try {
+							testResult = test.chiSquareTest(expected, observed);
+							System.out.println("ChiSquared: " + testResult);
+						} catch (IllegalArgumentException e) {
+							e.printStackTrace();
+						} catch (MathException e) {
+							e.printStackTrace();
+						}
+					} 
+					
+					if (testResult > 0.05) {//null hypothesis
 						noConcedeSet.add(i);
 					} else { //null hypothesis rejected, check for concession
-						System.out.println("***** Estimating utility *****");
-						int EU = estimateSetUtility(fc.get(i), i);
-						System.out.println("EU: " + EU);
-						int prevEU = estimateSetUtility(prevFc.get(i), i);
-						System.out.println("prevEU: " + prevEU);
-
-						// If a new estimated utility is lower, then a concession has been made
-						concession = (EU < prevEU) ? true : concession;
-						System.out.println("Concession: " + concession);
+						int EU = estimateSetUtility(frequencyCount, i);
+						int prevEU = estimateSetUtility(prevFrequencyCount, i);
+						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
 					}
 				}
-			}
+			} 
 			
 			if (concession && noConcedeSet.size() != issueSet.size()) {
 				for (Integer issueIndex : noConcedeSet) {
@@ -160,7 +185,7 @@ public class Group15_OM extends OpponentModel {
 				}
 			}
 			
-			// Prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
+			// prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
 			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
 			oppBidSet.clear();
 		}

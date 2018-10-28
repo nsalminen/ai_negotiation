@@ -120,6 +120,7 @@ public class Group15_OM extends OpponentModel {
 			
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
 			Set<Integer> noConcedeSet = new HashSet<Integer>();
+			
 			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
 			boolean concession = false;
 			

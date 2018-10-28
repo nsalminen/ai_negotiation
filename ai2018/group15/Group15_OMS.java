@@ -25,20 +25,19 @@ import genius.core.boaframework.OpponentModel;
 public class Group15_OMS extends OMStrategy {
 
 	/**
-	 * when to stop updating the opponentmodel. Note that this value is not
+	 * When to stop updating the opponent model. Note that this value is not
 	 * exactly one as a match sometimes lasts slightly longer.
 	 */
 	double updateThreshold = 1.1;
-	//Main parameter of this program,  it is a time value after the threshold, the
-	//OpponentModel is not updated anymore. 1.1 is used as default value
+
 	private int nBids = 3;
 	
 	private BidDetailsSorterUtility comparer = new BidDetailsSorterUtility();
 
 	/**
-	 * Initializes the opponent model strategy. If a value for the parameter t
-	 * is given, then it is set to this value. Otherwise, the default value is
-	 * used.
+	 * Initializes the opponent model strategy. If values for the parameter t
+	 * and n are given, then it is set to this value. Otherwise, the default 
+	 * values are used.
 	 * 
 	 * @param negotiationSession
 	 *            state of the negotiation.
@@ -75,21 +74,24 @@ public class Group15_OMS extends OMStrategy {
 	@Override
 	public BidDetails getBid(List<BidDetails> allBids) {
 
-		// 1. If there is only a single bid, return this bid
+		/** 
+		 * If there is only a single bid, return this bid
+		 */
 		if (allBids.size() == 1) {
 			return allBids.get(0);
 		}
 
-		
-		BidDetails bestBid = allBids.get(0);
 
-		
-		//We need to have an array with the opponents bids and their utility for the opponent
-		//according to our opponent model, so we can sort them later.
+		/** 
+		 * We need to have an array with the opponents bids and their utility for the opponent
+		 * according to our opponent model, so we can sort them later.
+		 */
 		ArrayList<BidDetails> opponentBids = new ArrayList<BidDetails>(allBids.size());
 		
-		//For each opponent bid, evaluate them according to the opponnent model and put them
-		//into the array.
+		/**
+		 * For each opponent bid, evaluate them according to the opponent model and put them
+		 * into the array.
+		 */
 		for (BidDetails bidDetail : allBids) {
 			Bid bid = bidDetail.getBid();
 			double evaluation = model.getBidEvaluation(bid);
@@ -97,18 +99,24 @@ public class Group15_OMS extends OMStrategy {
 			opponentBids.add(OpponentBidDetails);
 		}
 		
-		//Use the BidDetailsSorter Utility to then sort these bids
-		//The bid with the highest utility is at the front of the list.
+		/**
+		 * Use the BidDetailsSorter Utility to then sort these bids
+		 * The bid with the highest utility is at the front of the list.
+		 */
 		Collections.sort(opponentBids, comparer);
 		
-		//Now randomly select a bid from the top N.
-		//(Indexing starts at 0 so we want to generate random numbers from 0 to N-1 for the top N)
+		/**
+		 * Now randomly select a bid from the top N.
+		 * (Indexing starts at 0 so we want to generate random numbers from 0 to N-1 for the top N)
+		 */
 		int randomBidIndex = (int)(Math.random() * nBids);
-		//System.out.println(randomBidIndex);
+
 		Bid bestOpponentBid = opponentBids.get(randomBidIndex).getBid();
 		
-		//Now return this bid in the form for our agent.
-		bestBid = new BidDetails(bestOpponentBid,
+		/**
+		 * Now return this bid in the form for our agent.
+		 */
+		BidDetails bestBid = new BidDetails(bestOpponentBid,
 									negotiationSession.getUtilitySpace().getUtility(bestOpponentBid),
 									negotiationSession.getTime());
 		

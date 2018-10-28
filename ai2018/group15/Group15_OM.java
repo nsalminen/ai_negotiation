@@ -58,6 +58,8 @@ public class Group15_OM extends OpponentModel {
 	 * determines the size of the sets of bids
 	 */
 	private int bidSetSize;
+	private int minBidSetSize = 4;//specific to party domain
+	private int maxBidSetSize = 150;
 	
 	private ArrayList<BidDetails> oppBidSet;
 	private ArrayList<BidDetails> prevOppBidSet;
@@ -75,6 +77,12 @@ public class Group15_OM extends OpponentModel {
 		}
 		if (parameters != null && parameters.get("s") != null) {
 			bidSetSize = (int) Math.round(parameters.get("s"));
+			if(bidSetSize > maxBidSetSize) {
+				bidSetSize = maxBidSetSize;
+			}
+			if(bidSetSize < minBidSetSize) {
+				bidSetSize = minBidSetSize;
+			}
 		} else {
 			bidSetSize = 30;
 		}

@@ -74,13 +74,10 @@ public class Group15_OMS extends OMStrategy {
 	@Override
 	public BidDetails getBid(List<BidDetails> allBids) {
 
-		/** 
-		 * If there is only a single bid, return this bid
-		 */
+		// If there is only a single bid, return this bid
 		if (allBids.size() == 1) {
 			return allBids.get(0);
 		}
-
 
 		/** 
 		 * We need to have an array with the opponents bids and their utility for the opponent
@@ -113,9 +110,8 @@ public class Group15_OMS extends OMStrategy {
 
 		Bid bestOpponentBid = opponentBids.get(randomBidIndex).getBid();
 		
-		/**
-		 * Now return this bid in the form for our agent.
-		 */
+
+		// Now return this bid in the form for our agent.
 		BidDetails bestBid = new BidDetails(bestOpponentBid,
 									negotiationSession.getUtilitySpace().getUtility(bestOpponentBid),
 									negotiationSession.getTime());

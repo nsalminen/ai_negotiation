@@ -160,20 +160,29 @@ public class Group15_BS extends OfferingStrategy {
 			
 
 		} 
-		else { //enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
-			// myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
-			int myAction = 1;
-			double opponentBidDiff = opponentBidDifference();
-			if(opponentBidDiff < (-1 * minimalUtilDifference)) {
-				if(randomConcede() && bs.getLower() > minimumLowerBound)
-					myAction = 2;
+		else { 
+			
+			if (opponentModel instanceof NoModel) {
+				/**enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
+				 * myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
+				 */
+				int myAction = 1;
+				double opponentBidDiff = opponentBidDifference();
+				if(opponentBidDiff < (-1 * minimalUtilDifference)) {
+					if(randomConcede() && bs.getLower() > minimumLowerBound)
+						myAction = 2;
+				}
+				else if (opponentBidDiff > minimalUtilDifference)
+				{
+					if(randomIncrease())
+						myAction = 3;
+				}
+				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
 			}
-			else if (opponentBidDiff > minimalUtilDifference)
-			{
-				if(randomIncrease())
-					myAction = 3;
+			else {
+				double utilityGoal = p(time);
+				nextBid = omStrategy.getBid(outcomespace, utilityGoal);
 			}
-			nextBid = bs.GetNextBid(myAction, opponentBidDiff);
 		} 
 		
 		return nextBid;

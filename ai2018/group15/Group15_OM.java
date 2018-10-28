@@ -32,6 +32,11 @@ import genius.core.utility.EvaluatorDiscrete;
  * adapted the hard headed frequency model using the paper [...] to compare sets of bids instead of on a pair basis
  */
 public class Group15_OM extends OpponentModel {
+	
+	// The constant factor in the weight update function
+	private double alpha;
+	// The constant factor in the weight update function
+	private double beta;
 	/*
 	 * the learning coefficient is the weight that is added each turn to the
 	 * issue weights which changed. It's a trade-off between concession speed
@@ -68,6 +73,16 @@ public class Group15_OM extends OpponentModel {
 		} else {
 			bidSetSize = 30;
 		}
+		if (parameters != null && parameters.get("a") != null) {
+			alpha = (int) Math.round(parameters.get("a"));
+		} else {
+			alpha = 10;
+		}
+		if (parameters != null && parameters.get("b") != null) {
+			beta = (int) Math.round(parameters.get("b"));
+		} else {
+			beta = 5;
+		}
 		
 		oppBidSet = new ArrayList<BidDetails>(bidSetSize);
 		prevOppBidSet = new ArrayList<BidDetails>(bidSetSize);
@@ -102,20 +117,23 @@ public class Group15_OM extends OpponentModel {
 		//if the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
 			System.out.println("> current opp bid set is full");
+			
+			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
+			Set<Integer> noConcedeSet = new HashSet<Integer>();
+			//per issue perform pval test and compare new set's estimated utility with previous set's new estimated utility
+			boolean concession = false;
+			
 			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
 				//compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
 				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
 				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
 				
-				//per issue perform pval test and compare new set's estimated utility with previous set's new estimated utility
-				boolean concession = false;
-				
 				//todo pval test x^2 - test(fc = prevfc)
 				
 				//loop over all issues
-				for(Integer i : oppBid.getBid().getValues().keySet()) {
+				for(Integer i : issueSet) {
 					if(false) { //todo null hypothesis
-						
+						noConcedeSet.add(i);
 					} else { //null hypothesis rejected, check for concession
 						System.out.println("***** Estimating utility *****");
 						int EU = estimateSetUtility(fc.get(i), i);
@@ -126,7 +144,19 @@ public class Group15_OM extends OpponentModel {
 						System.out.println("Concession: " + concession);
 					}
 				}
-			} 
+			}
+			
+			if (concession && noConcedeSet.size() != issueSet.size()) {
+				for (Integer issueIndex : noConcedeSet) {
+					Objective issue = opponentUtilitySpace.getDomain()
+							.getObjectivesRoot().getObjective(issueIndex);
+					double currentWeight = opponentUtilitySpace.getWeight(issueIndex);
+					double newWeight = currentWeight + (alpha * Math.pow(time, beta));
+					
+					opponentUtilitySpace.setWeight(issue, newWeight);
+				}
+			}
+			
 			// prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
 			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
 			oppBidSet.clear();
@@ -176,6 +206,10 @@ public class Group15_OM extends OpponentModel {
 				"The learning coefficient determines how quickly the issue weights are learned"));
 		set.add(new BOAparameter("s", (double) 30,
 				"The size of the bid sets to compare"));
+		set.add(new BOAparameter("a", (double) 10,
+				"The constant deduction in the weight update"));
+		set.add(new BOAparameter("b", (double) 5,
+				"The variable deduction in the weight update, which will determine the decay"));
 		return set;
 	}
 

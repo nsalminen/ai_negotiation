@@ -8,12 +8,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import agents.org.apache.commons.math.MathException;
+import agents.org.apache.commons.math.stat.inference.ChiSquareTestImpl;
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
 import genius.core.boaframework.OpponentModel;
-import genius.core.issue.Issue;
 import genius.core.issue.IssueDiscrete;
 import genius.core.issue.Objective;
 import genius.core.issue.Value;
@@ -21,8 +22,6 @@ import genius.core.issue.ValueDiscrete;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.Evaluator;
 import genius.core.utility.EvaluatorDiscrete;
-import agents.org.apache.commons.math.MathException;
-import agents.org.apache.commons.math.stat.inference.ChiSquareTestImpl;
 
 
 /**
@@ -37,17 +36,18 @@ import agents.org.apache.commons.math.stat.inference.ChiSquareTestImpl;
  */
 public class Group15_OM extends OpponentModel {
 	// The constant factor in the weight update function
-		private double alpha;
-		// The constant factor in the weight update function
-		private double beta;
+	private double alpha;
+	// The constant factor in the weight update function
+	private double beta;
+	
 	/*
-	 * the learning coefficient is the weight that is added each turn to the
+	 * The learning coefficient is the weight that is added each turn to the
 	 * issue weights which changed. It's a trade-off between concession speed
 	 * and accuracy.
 	 */
 	private double learnCoef;
 	/*
-	 * value which is added to a value if it is found. Determines how fast the
+	 * Value which is added to a value if it is found. Determines how fast the
 	 * value weights converge.
 	 */
 	private int learnValueAddition;
@@ -55,7 +55,7 @@ public class Group15_OM extends OpponentModel {
 	private double goldenValue;
 	
 	/*
-	 * determines the size of the sets of bids
+	 * Determines the size of the sets of bids
 	 */
 	private int bidSetSize;
 	private int minBidSetSize = 4;//specific to party domain
@@ -126,13 +126,13 @@ public class Group15_OM extends OpponentModel {
 			return;
 		}
 		
-		//add the most recent opp bid
+		// Add the most recent opponent bid
 		BidDetails oppBid = negotiationSession.getOpponentBidHistory()
 				.getHistory()
 				.get(negotiationSession.getOpponentBidHistory().size() - 1);
 		oppBidSet.add(oppBid);
 		
-		//if the set is full perform comparison
+		// If the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
 			System.out.println("updatingOM");
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
@@ -140,16 +140,16 @@ public class Group15_OM extends OpponentModel {
 			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
 			boolean concession = false;
 			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
-				//compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
+				// Compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
 				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
 				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
 				
-				//loop over all issues
+				// Loop over all issues
 				for(Integer i : oppBid.getBid().getValues().keySet()) {
 					HashMap<Value, Integer> frequencyCount = fc.get(i);
 					HashMap<Value, Integer> prevFrequencyCount = prevFc.get(i);
 					
-					//prepare test
+					// Prepare test
 					double[] expected = new double[frequencyCount.keySet().size()];
 					long[] observed = new long[frequencyCount.keySet().size()];		
 					Arrays.fill(expected, 0);
@@ -179,7 +179,7 @@ public class Group15_OM extends OpponentModel {
 					
 					if (testResult > 0.05) {//null hypothesis
 						noConcedeSet.add(i);
-					} else { //null hypothesis rejected, check for concession
+					} else { // Null hypothesis rejected, check for concession
 						int EU = estimateSetUtility(frequencyCount, i);
 						int prevEU = estimateSetUtility(prevFrequencyCount, i);
 						System.out.println("EU : " + EU + " prevEU : " + prevEU);
@@ -205,7 +205,7 @@ public class Group15_OM extends OpponentModel {
 			
 			// Then for each issue value that has been offered last time, a constant
 			// value is added to its corresponding ValueDiscrete.
-			//loop over all issues
+			// loop over all issues
 			for(BidDetails bid: oppBidSet) {
 				
 				try {
@@ -214,7 +214,7 @@ public class Group15_OM extends OpponentModel {
 						EvaluatorDiscrete value = (EvaluatorDiscrete) e.getValue();
 						IssueDiscrete issue = ((IssueDiscrete) e.getKey());
 						/*
-						 * add constant learnValueAddition to the current preference of
+						 * Add constant learnValueAddition to the current preference of
 						 * the value to make it more important
 						 */
 						ValueDiscrete issuevalue = (ValueDiscrete) bid.getBid()
@@ -227,7 +227,7 @@ public class Group15_OM extends OpponentModel {
 				}
 			}
 			
-			// prepare for new set: prevBidSet contains no or an old bid set, copy bidSet to prevBidSet and empty bidSet
+			// Prepare for new set: prevBidSet contains no or an old bid set, copy bidSet to prevBidSet and empty bidSet
 			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
 			oppBidSet.clear();
 			updateConceeded(concession);

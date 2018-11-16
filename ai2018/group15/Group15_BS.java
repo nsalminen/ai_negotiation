@@ -1,12 +1,12 @@
 package ai2018.group15;
 
 import java.util.HashSet;
-import java.util.List; 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import genius.core.Bid;
+import genius.core.BidHistory;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
@@ -15,11 +15,7 @@ import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
-import genius.core.misc.Range;
-import genius.core.timeline.TimeLineInfo; 
-import genius.core.timeline.Timeline.Type;
-import genius.core.timeline.DiscreteTimeline; 
-import genius.core.BidHistory; 
+import genius.core.misc.Range; 
 
 
 
@@ -37,9 +33,7 @@ import genius.core.BidHistory;
  */
 public class Group15_BS extends OfferingStrategy {
 
-	/**
-	 * k in [0, 1]. For k = 0 the agent starts with a bid of maximum utility
-	 */
+	/** k in [0, 1]. For k = 0 the agent starts with a bid of maximum utility */
 	private double k;
 	/** Maximum target utility */
 	private double Pmax;
@@ -163,14 +157,11 @@ public class Group15_BS extends OfferingStrategy {
 			} 
 
 			nextBid = bestOpponentBid;
-			
-			
-
 		} 
 		else { 
 			
 			if (opponentModel instanceof NoModel) {
-				/**enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
+				/** Enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
 				 * myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
 				 */
 				int myAction = 1;
@@ -187,11 +178,9 @@ public class Group15_BS extends OfferingStrategy {
 				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
 			}
 			else {
-				
-				
-				//determine of opponent made a concession and if the concession has been handled by our agent yet
+				// Determine if opponent made a concession and if the concession has been handled by our agent yet
 				if(((Group15_OM) opponentModel).opponentConceeded() && !((Group15_OM) opponentModel).getConcessionHandled()) {
-					//update target utility
+					// Update target utility
 					if(utilityGoal > Pmin) {						
 						utilityGoal -= Math.min(maxConcessionAmount, 0.01);
 						System.out.println("Conceding strategy");

@@ -14,9 +14,9 @@ import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 
 /**
-	* This AS determines whether the agent should accept or reject the latest bid. Before the negotiation has 
-	* reached a time t, the agent will only accept the opponent's bid if its utility is higher than it would be 
-	* in their own next bid. After time t, the agent will accept any bid that is higher than some variable c.
+ * This AS determines whether the agent should accept or reject the latest bid. Before the negotiation has 
+ * reached a time t, the agent will only accept the opponent's bid if its utility is higher than it would be 
+ * in their own next bid. After time t, the agent will accept any bid that is higher than some variable c.
  */
 public class Group15_AS extends AcceptanceStrategy {
 

@@ -1,13 +1,8 @@
 package ai2018.group15;
-import genius.core.misc.Range;
-
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-import genius.core.Bid;
 import genius.core.bidding.BidDetails;
-import genius.core.bidding.BidDetailsSorterUtility;
 import genius.core.boaframework.SortedOutcomeSpace;
 
 public class BidSelector {

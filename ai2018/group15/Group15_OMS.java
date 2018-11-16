@@ -102,21 +102,22 @@ public class Group15_OMS extends OMStrategy {
 		 */
 		Collections.sort(opponentBids, comparer);
 		
+		
 		/**
 		 * Now randomly select a bid from the top N.
 		 * (Indexing starts at 0 so we want to generate random numbers from 0 to N-1 for the top N)
 		 */
-		int randomBidIndex = (int)(Math.random() * nBids);
+		int randomBidIndex = (int)(Math.random() * Math.min(nBids, opponentBids.size()));
+		
 
 		Bid bestOpponentBid = opponentBids.get(randomBidIndex).getBid();
 		
-
+		
 		// Now return this bid in the form for our agent.
 		BidDetails bestBid = new BidDetails(bestOpponentBid,
 									negotiationSession.getUtilitySpace().getUtility(bestOpponentBid),
 									negotiationSession.getTime());
 		
-
 		return bestBid;
 	}
 

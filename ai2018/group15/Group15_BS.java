@@ -15,8 +15,9 @@ import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
+import genius.core.misc.Range;
 import genius.core.timeline.TimeLineInfo; 
-import genius.core.timeline.Timeline.Type; 
+import genius.core.timeline.Timeline.Type;
 import genius.core.timeline.DiscreteTimeline; 
 import genius.core.BidHistory; 
 
@@ -86,6 +87,11 @@ public class Group15_BS extends OfferingStrategy {
 	/** rng */
 	private Random rng;
 	
+	/** size (in utility) of window to take target utility bids from */
+	private double windowSize = 0.04;
+	
+	private double utilityGoal = 1.0;
+	
 	/**
 	 * Method which initializes the agent by setting all parameters. The
 	 * parameter "e" is the only parameter which is required.
@@ -146,6 +152,7 @@ public class Group15_BS extends OfferingStrategy {
 	 */
 	@Override
 	public BidDetails determineNextBid() {
+		System.out.println("Determining next bid. Round: " + negotiationSession.getTimeline().getCurrentTime());
 		double time = negotiationSession.getTime(); 
 
 		if(time > 0.99) { //near time limit -> conceding strategy
@@ -180,8 +187,25 @@ public class Group15_BS extends OfferingStrategy {
 				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
 			}
 			else {
-				double utilityGoal = p(time);
-				nextBid = omStrategy.getBid(outcomespace, utilityGoal);
+				
+				
+				//determine of opponent made a concession and if the concession has been handled by our agent yet
+				if(((Group15_OM) opponentModel).opponentConceeded() && !((Group15_OM) opponentModel).getConcessionHandled()) {
+					//update target utility
+					if(utilityGoal > Pmin) {						
+						utilityGoal -= Math.min(maxConcessionAmount, 0.01);
+						System.out.println("Conceding strategy");
+						((Group15_OM) opponentModel).setConcessionHandled();
+					}
+				}
+				System.out.println("target util: " + utilityGoal);
+				
+				Range targetRange = new Range(utilityGoal - windowSize/2, utilityGoal + windowSize/2);
+				//get set of similarly preferred bids
+				List<BidDetails> preferredBids = outcomespace.getBidsinRange(targetRange);
+				
+				//get a good bid for the opponent from our set of preferred bids
+				nextBid = omStrategy.getBid(preferredBids);
 			}
 		} 
 		

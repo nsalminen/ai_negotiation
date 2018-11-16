@@ -64,6 +64,10 @@ public class Group15_OM extends OpponentModel {
 	private ArrayList<BidDetails> oppBidSet;
 	private ArrayList<BidDetails> prevOppBidSet;
 	
+	private boolean Conceeded = false;
+	
+	private boolean ConcessionHandled = false;
+	
 	ChiSquareTestImpl test;
 
 	@Override
@@ -84,7 +88,7 @@ public class Group15_OM extends OpponentModel {
 				bidSetSize = minBidSetSize;
 			}
 		} else {
-			bidSetSize = 30;
+			bidSetSize = 5;
 		}
 		if (parameters != null && parameters.get("a") != null) {
 			alpha = (int) Math.round(parameters.get("a"));
@@ -130,6 +134,7 @@ public class Group15_OM extends OpponentModel {
 		
 		//if the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
+			System.out.println("updatingOM");
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
 			Set<Integer> noConcedeSet = new HashSet<Integer>();
 			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
@@ -160,7 +165,7 @@ public class Group15_OM extends OpponentModel {
 						iteration++;
 					}
 
-					double testResult = 0;
+					double testResult = 1;
 					if(expected.length >= 2 && expected.length == observed.length) {
 						try {
 							testResult = test.chiSquareTest(expected, observed);
@@ -170,13 +175,14 @@ public class Group15_OM extends OpponentModel {
 						} catch (MathException e) {
 							e.printStackTrace();
 						}
-					} 
+					}
 					
 					if (testResult > 0.05) {//null hypothesis
 						noConcedeSet.add(i);
 					} else { //null hypothesis rejected, check for concession
 						int EU = estimateSetUtility(frequencyCount, i);
 						int prevEU = estimateSetUtility(prevFrequencyCount, i);
+						System.out.println("EU : " + EU + " prevEU : " + prevEU);
 						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
 					}
 				}
@@ -189,16 +195,64 @@ public class Group15_OM extends OpponentModel {
 					double currentWeight = opponentUtilitySpace.getWeight(issueIndex);
 					double newWeight = currentWeight + (alpha * Math.pow(time, beta));
 					
+					System.out.println("issue = " + issue.getName());
+					System.out.println("currentWeight = " + currentWeight);
+					System.out.println("newWeight = " + newWeight);
+					
 					opponentUtilitySpace.setWeight(issue, newWeight);
 				}
 			}
 			
-			// prepare for new set: prevBidSet is empty, copy bidSet to prevBidSet and empty bidSet
+			// Then for each issue value that has been offered last time, a constant
+			// value is added to its corresponding ValueDiscrete.
+			//loop over all issues
+			for(BidDetails bid: oppBidSet) {
+				
+				try {
+					for (Entry<Objective, Evaluator> e : opponentUtilitySpace
+							.getEvaluators()) {
+						EvaluatorDiscrete value = (EvaluatorDiscrete) e.getValue();
+						IssueDiscrete issue = ((IssueDiscrete) e.getKey());
+						/*
+						 * add constant learnValueAddition to the current preference of
+						 * the value to make it more important
+						 */
+						ValueDiscrete issuevalue = (ValueDiscrete) bid.getBid()
+								.getValue(issue.getNumber());
+						Integer eval = value.getEvaluationNotNormalized(issuevalue);
+						value.setEvaluation(issuevalue, (learnValueAddition + eval));
+					}
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+			
+			// prepare for new set: prevBidSet contains no or an old bid set, copy bidSet to prevBidSet and empty bidSet
 			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
 			oppBidSet.clear();
+			updateConceeded(concession);
+			ConcessionHandled = false;
 		}
 		
 		
+	}
+	
+	public void setConcessionHandled() {
+		ConcessionHandled = true;
+	}
+	
+	public boolean getConcessionHandled() {
+		return ConcessionHandled;
+	}
+	
+	private void updateConceeded(boolean didConcede) {
+		System.out.println("didConcede : " + didConcede);
+		Conceeded = didConcede;
+	}
+	
+	
+	public boolean opponentConceeded() {
+		return Conceeded;
 	}
 	
 	/***

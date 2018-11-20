@@ -53,11 +53,11 @@ public class Group15_BS extends OfferingStrategy {
 	/** max bid count in range*/
 	private int maxBids = 5;
 	
-	/** concession amount */
+	/** concession amount, scale with time */
 	private double maxConcessionAmount = 0.05; 	
 	/** concession probability when opponent makes a concession */
 	private int concessProba = 75;
-	/** increase amount */
+	/** increase amount, scale with time */
 	private double maxIncreaseAmount = 0.04; 	
 	/** increase probability when opponent makes an offer with increased utility */
 	private int increaseProba = 75;
@@ -75,16 +75,21 @@ public class Group15_BS extends OfferingStrategy {
 	private double minimalUtilDifference = 0.02;
 	
 	/** minimum lower bound of sliding window */
-	private double minimumLowerBound = 0.85;
+	private double minimumLowerBound = 0.80;
 	
 	
 	/** rng */
 	private Random rng;
 	
 	/** size (in utility) of window to take target utility bids from */
-	private double windowSize = 0.04;
+	private double windowSize = 0.05;
 	
+	
+	/** target utility at the start of a session*/
 	private double utilityGoal = 1.0;
+	
+	/** determines by how much variables that depend on time should be scaled depending on the total session time*/
+	private double timeScalar = 1.0;
 	
 	/**
 	 * Method which initializes the agent by setting all parameters. The
@@ -94,6 +99,15 @@ public class Group15_BS extends OfferingStrategy {
 	public void init(NegotiationSession negoSession, OpponentModel model, OMStrategy oms,
 			Map<String, Double> parameters) throws Exception {
 		super.init(negoSession, parameters);
+		String timeType = negotiationSession.getTimeline().getType().name();		
+		if(timeType == "Rounds") {
+			timeScalar = negotiationSession.getTimeline().getTotalTime()/100;
+		} else {
+			timeScalar = negotiationSession.getTimeline().getTotalTime();
+		}
+		maxIncreaseAmount = maxIncreaseAmount / timeScalar;
+		maxConcessionAmount = maxConcessionAmount / timeScalar;
+		
 		if (parameters.get("e") != null) {
 			this.negotiationSession = negoSession;
 
@@ -131,6 +145,7 @@ public class Group15_BS extends OfferingStrategy {
 		} else {
 			throw new Exception("Constant \"e\" for the concession speed was not set.");
 		}
+		
 	}
 
 	@Override
@@ -181,9 +196,11 @@ public class Group15_BS extends OfferingStrategy {
 				// Determine if opponent made a concession and if the concession has been handled by our agent yet
 				if(((Group15_OM) opponentModel).opponentConceeded() && !((Group15_OM) opponentModel).getConcessionHandled()) {
 					// Update target utility
-					if(utilityGoal > Pmin) {						
-						utilityGoal -= Math.min(maxConcessionAmount, 0.01);
-						System.out.println("Conceding strategy");
+					if(utilityGoal > Pmin) {	
+						if(randomConcede()) {
+							utilityGoal -= maxConcessionAmount;
+							System.out.println("Conceding strategy");
+						}
 						((Group15_OM) opponentModel).setConcessionHandled();
 					}
 				}

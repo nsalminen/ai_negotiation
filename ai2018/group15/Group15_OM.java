@@ -58,6 +58,8 @@ public class Group15_OM extends OpponentModel {
 	 * Determines the size of the sets of bids
 	 */
 	private int bidSetSize;
+	/** default bid set size, should be dependent on the session length in time */
+	private int defaultBidSetSize = 4;
 	private int minBidSetSize = 4;//specific to party domain
 	private int maxBidSetSize = 150;
 	
@@ -68,12 +70,21 @@ public class Group15_OM extends OpponentModel {
 	
 	private boolean ConcessionHandled = false;
 	
+	/** amount by which to scale time dependent variables */ 
+	private double timeScalar = 1.0;
+	
 	ChiSquareTestImpl test;
 
 	@Override
 	public void init(NegotiationSession negotiationSession,
 			Map<String, Double> parameters) {
 		this.negotiationSession = negotiationSession;
+		String timeType = negotiationSession.getTimeline().getType().name();		
+		if(timeType == "Rounds") {
+			timeScalar = negotiationSession.getTimeline().getTotalTime()/100;
+		} else {
+			timeScalar = negotiationSession.getTimeline().getTotalTime();
+		}
 		if (parameters != null && parameters.get("l") != null) {
 			learnCoef = parameters.get("l");
 		} else {
@@ -88,7 +99,7 @@ public class Group15_OM extends OpponentModel {
 				bidSetSize = minBidSetSize;
 			}
 		} else {
-			bidSetSize = 5;
+			bidSetSize = defaultBidSetSize;
 		}
 		if (parameters != null && parameters.get("a") != null) {
 			alpha = (int) Math.round(parameters.get("a"));
@@ -114,6 +125,9 @@ public class Group15_OM extends OpponentModel {
 		 * weight, (therefore defining the maximum possible also).
 		 */
 		goldenValue = learnCoef / amountOfIssues;
+		
+		//Scale with time
+		bidSetSize = (int) Math.floor(bidSetSize * timeScalar);
 
 		initializeModel();
 
@@ -169,7 +183,7 @@ public class Group15_OM extends OpponentModel {
 					if(expected.length >= 2 && expected.length == observed.length) {
 						try {
 							testResult = test.chiSquareTest(expected, observed);
-							System.out.println("ChiSquared: " + testResult);
+							//System.out.println("ChiSquared: " + testResult);
 						} catch (IllegalArgumentException e) {
 							e.printStackTrace();
 						} catch (MathException e) {
@@ -182,7 +196,7 @@ public class Group15_OM extends OpponentModel {
 					} else { // Null hypothesis rejected, check for concession
 						int EU = estimateSetUtility(frequencyCount, i);
 						int prevEU = estimateSetUtility(prevFrequencyCount, i);
-						System.out.println("EU : " + EU + " prevEU : " + prevEU);
+						//System.out.println("EU : " + EU + " prevEU : " + prevEU);
 						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
 					}
 				}
@@ -195,9 +209,9 @@ public class Group15_OM extends OpponentModel {
 					double currentWeight = opponentUtilitySpace.getWeight(issueIndex);
 					double newWeight = currentWeight + (alpha * Math.pow(time, beta));
 					
-					System.out.println("issue = " + issue.getName());
+					/*System.out.println("issue = " + issue.getName());
 					System.out.println("currentWeight = " + currentWeight);
-					System.out.println("newWeight = " + newWeight);
+					System.out.println("newWeight = " + newWeight);*/
 					
 					opponentUtilitySpace.setWeight(issue, newWeight);
 				}

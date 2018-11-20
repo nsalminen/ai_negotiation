@@ -61,7 +61,7 @@ public class Group15_OM extends OpponentModel {
 	/** default bid set size, should be dependent on the session length in time */
 	private int defaultBidSetSize = 4;
 	private int minBidSetSize = 4;//specific to party domain
-	private int maxBidSetSize = 150;
+	private int maxBidSetSize = 8;
 	
 	private ArrayList<BidDetails> oppBidSet;
 	private ArrayList<BidDetails> prevOppBidSet;
@@ -83,7 +83,7 @@ public class Group15_OM extends OpponentModel {
 		if(timeType == "Rounds") {
 			timeScalar = negotiationSession.getTimeline().getTotalTime()/100;
 		} else {
-			timeScalar = negotiationSession.getTimeline().getTotalTime();
+			timeScalar = negotiationSession.getTimeline().getTotalTime()*4;
 		}
 		if (parameters != null && parameters.get("l") != null) {
 			learnCoef = parameters.get("l");
@@ -92,12 +92,6 @@ public class Group15_OM extends OpponentModel {
 		}
 		if (parameters != null && parameters.get("s") != null) {
 			bidSetSize = (int) Math.round(parameters.get("s"));
-			if(bidSetSize > maxBidSetSize) {
-				bidSetSize = maxBidSetSize;
-			}
-			if(bidSetSize < minBidSetSize) {
-				bidSetSize = minBidSetSize;
-			}
 		} else {
 			bidSetSize = defaultBidSetSize;
 		}
@@ -127,7 +121,13 @@ public class Group15_OM extends OpponentModel {
 		goldenValue = learnCoef / amountOfIssues;
 		
 		//Scale with time
-		bidSetSize = (int) Math.floor(bidSetSize * timeScalar);
+		bidSetSize = (int) Math.floor(bidSetSize * Math.sqrt(timeScalar));
+		if(bidSetSize > maxBidSetSize) {
+			bidSetSize = maxBidSetSize;
+		}
+		if(bidSetSize < minBidSetSize) {
+			bidSetSize = minBidSetSize;
+		}
 
 		initializeModel();
 
@@ -148,7 +148,7 @@ public class Group15_OM extends OpponentModel {
 		
 		// If the set is full perform comparison
 		if(oppBidSet.size() == bidSetSize) {
-			System.out.println("updatingOM");
+			//System.out.println("updatingOM");
 			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
 			Set<Integer> noConcedeSet = new HashSet<Integer>();
 			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility

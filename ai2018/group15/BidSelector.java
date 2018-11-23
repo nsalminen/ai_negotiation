@@ -1,4 +1,4 @@
-package ai2018.group15;
+package ai_negotiation.ai2018.group15;
 import java.util.List;
 import java.util.Random;
 
@@ -91,7 +91,7 @@ public class BidSelector {
 	public double getLower() {
 		return sw.getLower();
 	}
-	
+
 	/***
 	 * debugging purposes
 	 */

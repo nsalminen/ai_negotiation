@@ -1,17 +1,23 @@
-package ai2018.group15;
+package ai_negotiation.ai2018.group15;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static java.lang.Math.pow;
 
+import genius.core.Bid;
+import genius.core.actions.Accept;
 import genius.core.boaframework.AcceptanceStrategy;
 import genius.core.boaframework.Actions;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
+import genius.core.boaframework.SortedOutcomeSpace;
+import genius.core.uncertainty.UserModel;
+import genius.core.utility.AbstractUtilitySpace;
 
 /**
  * This AS determines whether the agent should accept or reject the latest bid. Before the negotiation has 
@@ -24,7 +30,10 @@ public class Group15_AS extends AcceptanceStrategy {
 	private double b;
 	private double t;
 	private double c;
-
+	
+	private UserModel userModel;
+	
+	
 	/**
 	 * Empty constructor for the BOA framework.
 	 */
@@ -34,6 +43,7 @@ public class Group15_AS extends AcceptanceStrategy {
 	public Group15_AS(NegotiationSession negoSession, OfferingStrategy strat, double alpha, double beta, double gamma, double cee) {
 		this.negotiationSession = negoSession;
 		this.offeringStrategy = strat;
+		
 		this.a = alpha;
 		this.b = beta;
 		this.t = gamma;
@@ -45,6 +55,11 @@ public class Group15_AS extends AcceptanceStrategy {
 			Map<String, Double> parameters) throws Exception {
 		this.negotiationSession = negoSession;
 		this.offeringStrategy = strat;
+		userModel = negotiationSession.getUserModel();
+		
+		if(userModel != null) {
+			negotiationSession.setOutcomeSpace(new SortedOutcomeSpace(new EstimateUtility(negotiationSession).getUtilitySpace()));
+		}
 
 		if (parameters.get("a") != null || parameters.get("b") != null || parameters.get("g") != null) {
 			a = parameters.get("a");
@@ -72,19 +87,45 @@ public class Group15_AS extends AcceptanceStrategy {
 	 */
 	@Override
 	public Actions determineAcceptability() {
-		double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
-		double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails()
-				.getMyUndiscountedUtil();
 		
-		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
-			return Actions.Accept;
+		Bid lastOpponentBid = negotiationSession.getOpponentBidHistory().getLastBid();
+		
+		if (lastOpponentBid == null) {
+			return Actions.Reject;
 		}
-		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c - getCDiscount()){
-			return Actions.Accept;
+		
+		
+		//System.out.println(userModel.getBidRanking().getBidOrder());
+		/*if(userModel != null) {
+			System.out.println("UNCERTAINTY");
+			//Uncertainty, very basic acceptance strategy : TO REWORK
+			List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+			System.out.println(bidOrder);
+			if(bidOrder.contains(lastOpponentBid))	
+			{
+				double percentile = (bidOrder.size()
+						- bidOrder.indexOf(lastOpponentBid))
+						/ (double) bidOrder.size();
+				if (percentile < 0.1)
+					return Actions.Accept;
+			}
 		}
-		else if (negotiationSession.getTime() > 0.99) {
-			return Actions.Accept;
-		}
+		else {*/
+			System.out.println(" NO UNCERTAINTY");
+			//No uncertainty, normal procedure
+			double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
+			double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
+			
+			if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
+				return Actions.Accept;
+			}
+			else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c - getCDiscount()){
+				return Actions.Accept;
+			}
+			else if (negotiationSession.getTime() > 0.99) {
+				return Actions.Accept;
+			}
+		//}
 		return Actions.Reject;
 	}
 	

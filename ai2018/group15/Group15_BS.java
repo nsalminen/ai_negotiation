@@ -1,4 +1,4 @@
-package ai2018.group15;
+package ai_negotiation.ai2018.group15;
 
 import java.util.HashSet;
 import java.util.List;
@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import genius.core.Bid;
 import genius.core.BidHistory;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
@@ -16,6 +17,7 @@ import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
 import genius.core.misc.Range; 
+import genius.core.uncertainty.UserModel;
 
 
 
@@ -32,7 +34,13 @@ import genius.core.misc.Range;
  * the first bid. A better implementation is GeniusTimeDependent_Offering.
  */
 public class Group15_BS extends OfferingStrategy {
-
+	
+	private Bid lastRankedBid;
+	
+	private double minimalRankDifferenceDiv = 20;
+	
+	private UserModel userModel;
+	
 	/** k in [0, 1]. For k = 0 the agent starts with a bid of maximum utility */
 	private double k;
 	/** Maximum target utility */
@@ -96,36 +104,44 @@ public class Group15_BS extends OfferingStrategy {
 		super.init(negoSession, parameters);
 		if (parameters.get("e") != null) {
 			this.negotiationSession = negoSession;
-
-			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
-			negotiationSession.setOutcomeSpace(outcomespace);
-			
-			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
+				lastRankedBid = null;
+				this.userModel = negotiationSession.getUserModel();
+				
+				if(userModel != null) {
+					outcomespace = new SortedOutcomeSpace(new EstimateUtility(negotiationSession).getUtilitySpace());
+					negotiationSession.setOutcomeSpace(outcomespace);
+				}
+				else {
+					outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
+					negotiationSession.setOutcomeSpace(outcomespace);
+				}
+					
+				bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
  
-			bestOpponentBid = null;
-			beforeLastOpponentBidUtil = -1;
+				bestOpponentBid = null;
+				beforeLastOpponentBidUtil = -1;
 			
-			rng = new Random();
+				rng = new Random();
 			
-			this.e = parameters.get("e");
+				this.e = parameters.get("e");
 			
-			if (parameters.get("k") != null)
-				this.k = parameters.get("k");
-			else
-				this.k = 0;
+				if (parameters.get("k") != null)
+					this.k = parameters.get("k");
+				else
+					this.k = 0;
 
-			if (parameters.get("min") != null)
-				this.Pmin = parameters.get("min");
-			else
-				this.Pmin = negoSession.getMinBidinDomain().getMyUndiscountedUtil();
+				if (parameters.get("min") != null)
+					this.Pmin = parameters.get("min");
+				else
+					this.Pmin = negoSession.getMinBidinDomain().getMyUndiscountedUtil();
 
-			if (parameters.get("max") != null) {
-				Pmax = parameters.get("max");
-			} else {
-				BidDetails maxBid = negoSession.getMaxBidinDomain();
-				Pmax = maxBid.getMyUndiscountedUtil();
-			}
-
+				if (parameters.get("max") != null) {
+					Pmax = parameters.get("max");
+				} else {
+					BidDetails maxBid = negoSession.getMaxBidinDomain();
+					Pmax = maxBid.getMyUndiscountedUtil();
+				}
+			
 			this.opponentModel = model;
 			this.omStrategy = oms;
 		} else {
@@ -135,7 +151,15 @@ public class Group15_BS extends OfferingStrategy {
 
 	@Override
 	public BidDetails determineOpeningBid() {
-		return bs.getFirstBid();
+		System.out.println("first");
+		/*UserModel userModel = negotiationSession.getUserModel();
+		if(userModel != null){
+			List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+			return new BidDetails(bidOrder.get(bidOrder.size()-1),0);
+		}
+		else {*/
+			return bs.getFirstBid();
+		//}
 	}
 
 	/**
@@ -152,30 +176,70 @@ public class Group15_BS extends OfferingStrategy {
 		if(time > 0.99) { //near time limit -> conceding strategy
 			if(bestOpponentBid == null) { 
 				BidHistory opponentBids = negotiationSession.getOpponentBidHistory(); 
-				bestOpponentBid = opponentBids.getBestBidDetails();
+
+				/*if(userModel != null) {
+					List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+					Bid bestBid = bidOrder.get(0);
+					List<BidDetails> opponentBidsList = opponentBids.getHistory();
 					
+					for(int i= 0; i< opponentBidsList.size();i++) {
+						if(bidOrder.contains(opponentBidsList.get(i).getBid())){
+							if(bidOrder.indexOf(opponentBidsList.get(i).getBid()) > bidOrder.indexOf(bestBid))
+								bestBid = bidOrder.get(bidOrder.indexOf(opponentBidsList.get(i).getBid()));
+						}
+					}
+					bestOpponentBid = new BidDetails(bestBid, 0);
+				}
+				else {*/
+					bestOpponentBid = opponentBids.getBestBidDetails();
+				//}	
 			} 
 
 			nextBid = bestOpponentBid;
 		} 
 		else { 
 			
-			if (opponentModel instanceof NoModel) {
+			if (opponentModel instanceof NoModel || userModel != null) {
 				/** Enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
 				 * myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
 				 */
-				int myAction = 1;
-				double opponentBidDiff = opponentBidDifference();
-				if(opponentBidDiff < (-1 * minimalUtilDifference)) {
-					if(randomConcede() && bs.getLower() > minimumLowerBound)
-						myAction = 2;
+				
+				/*if(userModel != null) {
+					System.out.println("BID UNCERTAINTY");
+					//Choose a bid in the case of the uncertainty : TO REWORK
+					List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+					double opponentBidRankDiff = opponentRankDifference(bidOrder);
+					
+					if(opponentBidRankDiff < -1* bidOrder.size()/minimalRankDifferenceDiv) { //Value to fix
+						if(randomConcede()){
+							System.out.println("Concession");
+							
+						}
+					}
+					else if (opponentBidRankDiff > bidOrder.size()/minimalRankDifferenceDiv) {
+						if(randomIncrease()) {
+							System.out.println("Increase");
+							
+						}
+					}
+					//HardHeaded
+					nextBid = new BidDetails(negotiationSession.getDomain().getRandomBid(null),0);
 				}
-				else if (opponentBidDiff > minimalUtilDifference)
-				{
-					if(randomIncrease())
-						myAction = 3;
-				}
-				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
+				else {*/
+					System.out.println("BID NO UNCERTAINTY");
+					int myAction = 1;
+					double opponentBidDiff = opponentBidDifference();
+					if(opponentBidDiff < (-1 * minimalUtilDifference)) {
+						if(randomConcede() && bs.getLower() > minimumLowerBound)
+							myAction = 2;
+					}
+					else if (opponentBidDiff > minimalUtilDifference)
+					{
+						if(randomIncrease())
+							myAction = 3;
+					}
+					nextBid = bs.GetNextBid(myAction, opponentBidDiff);
+				//}
 			}
 			else {
 				// Determine if opponent made a concession and if the concession has been handled by our agent yet
@@ -217,6 +281,28 @@ public class Group15_BS extends OfferingStrategy {
 		double difference = lastOpponentBidUtil - beforeLastOpponentBidUtil;
 		beforeLastOpponentBidUtil = lastOpponentBidUtil;
 		return difference;
+	}
+	
+	private double opponentRankDifference(List<Bid> bidOrder) {
+		
+		//System.out.println(bidOrder);
+		if (negotiationSession.getOpponentBidHistory().getHistory().isEmpty()) {
+			//System.out.println("kee"); 
+			return 0;
+		}
+		if(!bidOrder.contains(negotiationSession.getOpponentBidHistory().getLastBid())) {
+			//System.out.println("kee2");
+			return 0;
+		}
+		if (lastRankedBid == null){
+			lastRankedBid = negotiationSession.getOpponentBidHistory().getLastBid();
+			//System.out.println("kee3");
+			return 0;
+		}
+		double rankdiff = bidOrder.indexOf(negotiationSession.getOpponentBidHistory().getLastBid()) - bidOrder.indexOf(lastRankedBid);
+		lastRankedBid = negotiationSession.getOpponentBidHistory().getLastBid();
+		System.out.println("rankdif " + rankdiff);
+		return rankdiff;
 	}
 	
 	/***

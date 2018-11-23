@@ -1,5 +1,6 @@
-package ai2018.group15;
+package ai_negotiation.ai2018.group15;
 
+import java.util.HashMap;
 import java.util.List;
 
 import genius.core.AgentID;
@@ -7,63 +8,60 @@ import genius.core.Bid;
 import genius.core.actions.Accept;
 import genius.core.actions.Action;
 import genius.core.actions.Offer;
+import genius.core.boaframework.BoaParty;
+import genius.core.boaframework.NegotiationSession;
+import genius.core.boaframework.SessionData;
 import genius.core.parties.AbstractNegotiationParty;
 import genius.core.parties.NegotiationInfo;
+import genius.core.persistent.PersistentDataType;
+import genius.core.uncertainty.AdditiveUtilitySpaceFactory;
+import genius.core.utility.AbstractUtilitySpace;
 
 /**
  * This is your negotiation party.
  */
-public class Group15 extends AbstractNegotiationParty {
-
-	private Bid lastReceivedBid = null;
-	private float acceptableMargin = 0.05f;
+public class Group15 extends BoaParty {
+	
+	public Group15 () {
+		super (new Group15_AS(), null , new Group15_BS() , null ,
+		new Group15_OM() , null , new Group15_OMS(),null);
+	}
 
 	@Override
 	public void init(NegotiationInfo info) {
-
-		super.init(info);
-
-		System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
-		System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
-
-		// if you need to initialize some variables, please initialize them
-		// below
 		
-
-	}
-
-	@Override
-	public Action chooseAction(List<Class<? extends Action>> validActions) {
-
-		if(validActions.contains(Accept.class) && lastReceivedBid != null && isAcceptable(lastReceivedBid)) {
-			return new Accept(getPartyId(), lastReceivedBid);
-		} else {
-			return new Offer(getPartyId(), generateBestBid());
+		if(isUncertain()) {
+			this.utilitySpace = estimateUtilitySpace();
+		}
+		
+		SessionData sessionData = null ;
+		if ( info.getPersistentData().getPersistentDataType () == PersistentDataType.SERIALIZABLE ) {
+			sessionData = ( SessionData ) info . getPersistentData (). get ();
+		}
+		if ( sessionData == null ) {
+			sessionData = new SessionData ();
+		}
+		
+		negotiationSession = new NegotiationSession (sessionData ,
+		utilitySpace , info.getTimeline(), null, info.getUserModel());
+		
+		opponentModel.init(negotiationSession, new HashMap <String, Double>());
+		omStrategy.init(negotiationSession, opponentModel, new HashMap <String, Double>());
+		HashMap <String,Double> map = new HashMap <String, Double>();
+		map.put("e", 1.0);
+		try {
+			offeringStrategy.init(negotiationSession ,opponentModel , omStrategy, map);
+			acceptConditions.init(negotiationSession, offeringStrategy, opponentModel, new HashMap <String, Double>());
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
-	public boolean isAcceptable(Bid bid) {
-		//ACCEPT if bid utility is equal to or larger than this party's last bid
-		
-		//ACCEPT if bid utility is within acceptable margin of party's last bid
-		
-		//ACCEPT if bid utility is larger than reservation value and it is the last round 
-		
-		//REJECT if bid utility is lower or equal to reservation value
-		return true;
-	}
-	
-	public Bid generateBestBid() {
-		
-		return generateRandomBid();
-	}
-
 	@Override
-	public void receiveMessage(AgentID sender, Action action) {
-		super.receiveMessage(sender, action);
-		if (action instanceof Offer) {
-			lastReceivedBid = ((Offer) action).getBid();
-		}
+	public AbstractUtilitySpace estimateUtilitySpace() {
+		return new AdditiveUtilitySpaceFactory (
+				getDomain ()). getUtilitySpace ();
 	}
 
 	@Override

@@ -14,8 +14,6 @@ import genius.core.boaframework.SessionData;
 import genius.core.parties.AbstractNegotiationParty;
 import genius.core.parties.NegotiationInfo;
 import genius.core.persistent.PersistentDataType;
-import genius.core.uncertainty.AdditiveUtilitySpaceFactory;
-import genius.core.utility.AbstractUtilitySpace;
 
 /**
  * This is your negotiation party.
@@ -23,17 +21,14 @@ import genius.core.utility.AbstractUtilitySpace;
 public class Group15 extends BoaParty {
 	
 	public Group15 () {
-		super (new Group15_AS(), null , new Group15_BS() , null ,
-		new Group15_OM() , null , new Group15_OMS(),null);
+		super (null , new HashMap < String , Double >() , null ,
+		new HashMap < String , Double >() , null ,
+		new HashMap < String , Double >() , null ,
+		new HashMap < String , Double >());
 	}
 
 	@Override
 	public void init(NegotiationInfo info) {
-		
-		if(isUncertain()) {
-			this.utilitySpace = estimateUtilitySpace();
-		}
-		
 		SessionData sessionData = null ;
 		if ( info.getPersistentData().getPersistentDataType () == PersistentDataType.SERIALIZABLE ) {
 			sessionData = ( SessionData ) info . getPersistentData (). get ();
@@ -43,26 +38,19 @@ public class Group15 extends BoaParty {
 		}
 		
 		negotiationSession = new NegotiationSession (sessionData ,
-		utilitySpace , info.getTimeline(), null, info.getUserModel());
-		
-		opponentModel.init(negotiationSession, new HashMap <String, Double>());
-		omStrategy.init(negotiationSession, opponentModel, new HashMap <String, Double>());
+		info.getUtilitySpace(), info.getTimeline(), null, null);
+		opponentModel = new Group15_OM();
+		opponentModel.init(negotiationSession, null);
+		omStrategy = new Group15_OMS();
+		omStrategy.init(negotiationSession, opponentModel, null);
+		offeringStrategy = new Group15_BS();
 		HashMap <String,Double> map = new HashMap <String, Double>();
 		map.put("e", 1.0);
-		try {
-			offeringStrategy.init(negotiationSession ,opponentModel , omStrategy, map);
-			acceptConditions.init(negotiationSession, offeringStrategy, opponentModel, new HashMap <String, Double>());
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		offeringStrategy.init(negotiationSession ,opponentModel , omStrategy, map);
+		acceptConditions = new Group15_AS (negotiationSession , offeringStrategy , 1 ,
+		0, 0.99, 0.7);
 	}
-	
-	@Override
-	public AbstractUtilitySpace estimateUtilitySpace() {
-		return new AdditiveUtilitySpaceFactory (
-				getDomain ()). getUtilitySpace ();
-	}
+
 
 	@Override
 	public String getDescription() {

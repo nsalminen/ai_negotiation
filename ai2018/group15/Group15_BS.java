@@ -170,7 +170,7 @@ public class Group15_BS extends OfferingStrategy {
 		} 
 		else { 
 			
-			if (opponentModel instanceof NoModel) {
+			if (opponentModel instanceof NoModel || userModel != null) { //NOTICE THAT HERE THE UNCERTAIN PROGRAM WONT USE THE OPPONENT MODEL
 				/** Enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
 				 * myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
 				 */

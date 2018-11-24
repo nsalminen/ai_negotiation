@@ -87,45 +87,19 @@ public class Group15_AS extends AcceptanceStrategy {
 	 */
 	@Override
 	public Actions determineAcceptability() {
+		double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();	
+		double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
 		
-		Bid lastOpponentBid = negotiationSession.getOpponentBidHistory().getLastBid();
-		
-		if (lastOpponentBid == null) {
-			return Actions.Reject;
+		if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
+			return Actions.Accept;
+		}
+		else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c - getCDiscount()){
+			return Actions.Accept;	
+		}
+		else if (negotiationSession.getTime() > 0.99) {
+			return Actions.Accept;
 		}
 		
-		
-		//System.out.println(userModel.getBidRanking().getBidOrder());
-		/*if(userModel != null) {
-			System.out.println("UNCERTAINTY");
-			//Uncertainty, very basic acceptance strategy : TO REWORK
-			List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
-			System.out.println(bidOrder);
-			if(bidOrder.contains(lastOpponentBid))	
-			{
-				double percentile = (bidOrder.size()
-						- bidOrder.indexOf(lastOpponentBid))
-						/ (double) bidOrder.size();
-				if (percentile < 0.1)
-					return Actions.Accept;
-			}
-		}
-		else {*/
-			System.out.println(" NO UNCERTAINTY");
-			//No uncertainty, normal procedure
-			double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
-			double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails().getMyUndiscountedUtil();
-			
-			if (a * lastOpponentBidUtil + b >= nextMyBidUtil) {
-				return Actions.Accept;
-			}
-			else if ( negotiationSession.getTime() > t && lastOpponentBidUtil >= c - getCDiscount()){
-				return Actions.Accept;
-			}
-			else if (negotiationSession.getTime() > 0.99) {
-				return Actions.Accept;
-			}
-		//}
 		return Actions.Reject;
 	}
 	

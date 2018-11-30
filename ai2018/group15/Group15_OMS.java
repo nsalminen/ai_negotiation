@@ -29,7 +29,7 @@ public class Group15_OMS extends OMStrategy {
 	 */
 	double updateThreshold = 1.1;
 
-	private int nBids = 1;
+	private int nBids = 3;
 	
 	private BidDetailsSorterUtility comparer = new BidDetailsSorterUtility();
 
@@ -117,7 +117,7 @@ public class Group15_OMS extends OMStrategy {
 									negotiationSession.getUtilitySpace().getUtility(bestOpponentBid),
 									negotiationSession.getTime());
 		
-		System.out.println("Estimated utility for opponent: " + model.getBidEvaluation(bestBid.getBid()));
+		//System.out.println("Estimated utility for opponent: " + model.getBidEvaluation(bestBid.getBid()));
 		
 		return bestBid;
 	}

@@ -31,7 +31,8 @@ public class EstimateUtility {
 	 * 
 	 * The estimation of the evaluation value for each possible Value for an Issue
 	 * is done by incrementing the weight of some value each time we have a bid with
-	 * this value. For each value, the final weight is the weight divided by the
+	 * this value. For each value, the final weight
+	 * TODO (update comment, code has changed) is the weight divided by the
 	 * rank of the Issues.
 	 * 
 	 * 
@@ -48,41 +49,42 @@ public class EstimateUtility {
 
 		for (int i = 0; i < bidOrder.size() - 1; i++) { // Reweigh issues based on bid pairs
 			for (int j = 1; j < domain.getIssues().size() + 1; j++) {
-				Value val1 = bidOrder.get(bidOrder.size() - 1 - i).getValue(j);
-				Value val2 = bidOrder.get(bidOrder.size() - 2 - i).getValue(j);
+				Value val1 = bidOrder.get(i).getValue(j);
+				Value val2 = bidOrder.get(i + 1).getValue(j);
 
 				if (val1.equals(val2)) {
-					weights[j - 1] += ((double) i) / bidOrder.size(); // Add weight based on rank
+					weights[j - 1] += (((double) i) + 1) / bidOrder.size(); // Add weight based on rank
 				}
 			}
 		}
 
 		weights = normalisation(weights); // Normalize the weights
 
-		List<HashMap<Value, List<Integer>>> valueWeights = new ArrayList<HashMap<Value, List<Integer>>>();
+		List<HashMap<Value, Double>> valueWeights = new ArrayList<HashMap<Value, Double>>();
 
 		for (int j = 0; j < domain.getIssues().size(); j++) {
-			valueWeights.add(new HashMap<Value, List<Integer>>());
+			valueWeights.add(new HashMap<Value, Double>());
 		}
 
 		for (int i = 0; i < bidOrder.size() - 1; i++) {
 			for (int j = 0; j < domain.getIssues().size(); j++) {
-				Value val = bidOrder.get(bidOrder.size() - 1 - i).getValue(j + 1);
+				Value val = bidOrder.get(i).getValue(j + 1);
 				if (valueWeights.get(j).containsKey(val)) {
-					int a = valueWeights.get(j).get(val).get(1) + 1;
-					valueWeights.get(j).get(val).set(1, a);
+					double a = valueWeights.get(j).get(val) + (((double) i) + 1) / bidOrder.size();
+					valueWeights.get(j).put(val, a);
 				} else {
-					List<Integer> list = new ArrayList<Integer>();
-					list.add(valueWeights.get(j).size() + 1);
-					list.add(1);
-					valueWeights.get(j).put(val, list);
+					valueWeights.get(j).put(val, (((double) i) + 1) / bidOrder.size());
 				}
 			}
 		}
 
 		for (int j = 0; j < domain.getIssues().size(); j++) {
+			double weightSum = 0;
 			for (Value val : valueWeights.get(j).keySet()) {
-				int weight = valueWeights.get(j).get(val).get(1) / valueWeights.get(j).get(val).get(0);
+				weightSum += valueWeights.get(j).get(val);
+			}
+			for (Value val : valueWeights.get(j).keySet()) {
+				double weight = valueWeights.get(j).get(val) / weightSum;
 				factory.setUtility(domain.getIssues().get(j), (ValueDiscrete) val, weight);
 			}
 		}

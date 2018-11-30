@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import genius.core.Bid;
 import genius.core.BidHistory;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
@@ -16,6 +17,7 @@ import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 import genius.core.boaframework.SortedOutcomeSpace;
 import genius.core.misc.Range; 
+import genius.core.uncertainty.UserModel;
 
 
 
@@ -32,7 +34,9 @@ import genius.core.misc.Range;
  * the first bid. A better implementation is GeniusTimeDependent_Offering.
  */
 public class Group15_BS extends OfferingStrategy {
-
+	
+	private UserModel userModel;
+	
 	/** k in [0, 1]. For k = 0 the agent starts with a bid of maximum utility */
 	private double k;
 	/** Maximum target utility */
@@ -112,10 +116,17 @@ public class Group15_BS extends OfferingStrategy {
 		
 		if (parameters.get("e") != null) {
 			this.negotiationSession = negoSession;
-
-			outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
-			negotiationSession.setOutcomeSpace(outcomespace);
-			
+			this.userModel = negotiationSession.getUserModel();
+				
+			if(userModel != null) {
+				outcomespace = new SortedOutcomeSpace(new EstimateUtility(negotiationSession).getUtilitySpace());
+				negotiationSession.setOutcomeSpace(outcomespace);
+			}
+			else {
+				outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
+				negotiationSession.setOutcomeSpace(outcomespace);
+			}
+					
 			bs = new BidSelector(outcomespace, maxWindowSize, maxBids, maxConcessionAmount, maxIncreaseAmount);			 
  
 			bestOpponentBid = null;
@@ -141,7 +152,7 @@ public class Group15_BS extends OfferingStrategy {
 				BidDetails maxBid = negoSession.getMaxBidinDomain();
 				Pmax = maxBid.getMyUndiscountedUtil();
 			}
-
+			
 			this.opponentModel = model;
 			this.omStrategy = oms;
 		} else {
@@ -170,14 +181,13 @@ public class Group15_BS extends OfferingStrategy {
 			if(bestOpponentBid == null) { 
 				BidHistory opponentBids = negotiationSession.getOpponentBidHistory(); 
 				bestOpponentBid = opponentBids.getBestBidDetails();
-					
 			} 
 
 			nextBid = bestOpponentBid;
 		} 
 		else { 
 			
-			if (opponentModel instanceof NoModel) {
+			if (opponentModel instanceof NoModel || userModel != null) { //NOTICE THAT HERE THE UNCERTAIN PROGRAM WONT USE THE OPPONENT MODEL
 				/** Enough time left -> Hardheaded and tit-for-tat (concede if you concede) strategy
 				 * myAction can take values : 1 = normal hard headed round, 2 = perform concession, 3 = increase target offer
 				 */
@@ -186,13 +196,14 @@ public class Group15_BS extends OfferingStrategy {
 				if(opponentBidDiff < (-1 * minimalUtilDifference)) {
 					if(randomConcede() && bs.getLower() > minimumLowerBound)
 						myAction = 2;
-				}
-				else if (opponentBidDiff > minimalUtilDifference)
-				{
-					if(randomIncrease())
-						myAction = 3;
-				}
-				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
+					}
+					else if (opponentBidDiff > minimalUtilDifference)
+					{
+						if(randomIncrease())
+							myAction = 3;
+					}
+					nextBid = bs.GetNextBid(myAction, opponentBidDiff);
+
 			}
 			else {
 				// Determine if opponent made a concession and if the concession has been handled by our agent yet

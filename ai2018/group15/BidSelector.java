@@ -91,7 +91,7 @@ public class BidSelector {
 	public double getLower() {
 		return sw.getLower();
 	}
-	
+
 	/***
 	 * debugging purposes
 	 */

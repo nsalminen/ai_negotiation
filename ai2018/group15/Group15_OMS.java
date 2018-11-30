@@ -14,6 +14,9 @@ import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
 import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OpponentModel;
+import genius.core.boaframework.SortedOutcomeSpace;
+import genius.core.uncertainty.UserModel;
+import genius.core.utility.AbstractUtilitySpace;
 
 /**
  * This class uses an opponent model to determine the next bid for the opponent,
@@ -27,12 +30,15 @@ public class Group15_OMS extends OMStrategy {
 	 * When to stop updating the opponent model. Note that this value is not
 	 * exactly one as a match sometimes lasts slightly longer.
 	 */
+	private UserModel userModel;
+	
 	double updateThreshold = 1.1;
 
 	private int nBids = 3;
 	
 	private BidDetailsSorterUtility comparer = new BidDetailsSorterUtility();
 
+	private AbstractUtilitySpace utilitySpace;
 	/**
 	 * Initializes the opponent model strategy. If values for the parameter t
 	 * and n are given, then it is set to this value. Otherwise, the default 
@@ -49,6 +55,15 @@ public class Group15_OMS extends OMStrategy {
 	@Override
 	public void init(NegotiationSession negotiationSession, OpponentModel model, Map<String, Double> parameters) {
 		super.init(negotiationSession, model, parameters);
+		this.userModel = negotiationSession.getUserModel();
+		if(userModel !=null) {
+			this.utilitySpace = new EstimateUtility(negotiationSession).getUtilitySpace();
+		}
+		else {
+			this.utilitySpace = negotiationSession.getUtilitySpace();
+		}
+		negotiationSession.setOutcomeSpace(new SortedOutcomeSpace(utilitySpace));
+		
 		if (parameters.get("t") != null) {
 			updateThreshold = parameters.get("t").doubleValue();
 		} else {
@@ -114,7 +129,7 @@ public class Group15_OMS extends OMStrategy {
 		
 		// Now return this bid in the form for our agent.
 		BidDetails bestBid = new BidDetails(bestOpponentBid,
-									negotiationSession.getUtilitySpace().getUtility(bestOpponentBid),
+									utilitySpace.getUtility(bestOpponentBid),
 									negotiationSession.getTime());
 		
 		//System.out.println("Estimated utility for opponent: " + model.getBidEvaluation(bestBid.getBid()));

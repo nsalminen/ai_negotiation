@@ -52,7 +52,7 @@ public class EstimateUtility {
 				Value val2 = bidOrder.get(bidOrder.size() - 2 - i).getValue(j);
 
 				if (val1.equals(val2)) {
-					weights[j - 1] += 1;
+					weights[j - 1] += 1 - ((double) i) / (bidOrder.size()); // Add weight based on rank
 				}
 			}
 		}

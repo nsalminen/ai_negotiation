@@ -137,6 +137,6 @@ public class Group15_OMS extends OMStrategy {
 
 	@Override
 	public String getName() {
-		return "Group 15 OMS";
+		return "Group 15 Opponent Model Strategy";
 	}
 }

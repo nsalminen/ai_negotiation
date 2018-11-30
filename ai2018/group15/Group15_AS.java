@@ -1,4 +1,4 @@
-package ai_negotiation.ai2018.group15;
+package ai2018.group15;
 
 import java.util.HashSet;
 import java.util.List;

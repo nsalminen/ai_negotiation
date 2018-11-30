@@ -1,4 +1,4 @@
-package ai_negotiation.ai2018.group15;
+package ai2018.group15;
 
 import java.util.HashMap;
 import java.util.List;
@@ -46,9 +46,12 @@ public class Group15 extends BoaParty {
 		offeringStrategy = new Group15_BS();
 		HashMap <String,Double> map = new HashMap <String, Double>();
 		map.put("e", 1.0);
-		offeringStrategy.init(negotiationSession ,opponentModel , omStrategy, map);
-		acceptConditions = new Group15_AS (negotiationSession , offeringStrategy , 1 ,
-		0, 0.99, 0.7);
+		try {
+			offeringStrategy.init(negotiationSession, opponentModel, omStrategy, map);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		acceptConditions = new Group15_AS(negotiationSession, offeringStrategy, 1, 0, 0.99, 0.7);
 	}
 
 

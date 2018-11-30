@@ -12,8 +12,9 @@ import genius.core.issue.ValueDiscrete;
 import genius.core.uncertainty.AdditiveUtilitySpaceFactory;
 import genius.core.utility.AbstractUtilitySpace;
 
-/* The EstimateUtility class is used to estimate the utility space when the negotiation is
-*  done under preference uncertainty.
+/* 
+* The EstimateUtility class is used to estimate the utility space when the negotiation is
+* done under preference uncertainty.
 */
 public class EstimateUtility {
 
@@ -31,13 +32,11 @@ public class EstimateUtility {
 	 * 
 	 * The estimation of the evaluation value for each possible Value for an Issue
 	 * is done by incrementing the weight of some value each time we have a bid with
-	 * this value. For each value, the final weight
-	 * TODO (update comment, code has changed) is the weight divided by the
-	 * rank of the Issues.
+	 * this value. For each value, the final weight TODO (update comment, code has
+	 * changed) is the weight divided by the rank of the Issues.
 	 * 
 	 * 
 	 * @return estimated utility space based on the bid ranking
-	 * 
 	 */
 
 	public AbstractUtilitySpace getUtilitySpace() {
@@ -59,6 +58,8 @@ public class EstimateUtility {
 		}
 
 		weights = normalisation(weights); // Normalize the weights
+
+		// Estimate the estimation value for each possible Value of an Issue
 
 		List<HashMap<Value, Double>> valueWeights = new ArrayList<HashMap<Value, Double>>();
 
@@ -97,18 +98,18 @@ public class EstimateUtility {
 	/*
 	 * This function normalizes an array an returns it.
 	 * 
-	 * @param Array with values of type double
+	 * @param sourceArray array with values of type double
 	 * 
-	 * @return Normalized array
+	 * @return normalized array
 	 */
-	private double[] normalisation(double[] array) {
+	private double[] normalisation(double[] sourceArray) {
 		double sum = 0.0;
-		for (int i = 0; i < array.length; i++) {
-			sum += array[i];
+		for (int i = 0; i < sourceArray.length; i++) {
+			sum += sourceArray[i];
 		}
-		for (int i = 0; i < array.length; i++) {
-			array[i] = array[i] / sum;
+		for (int i = 0; i < sourceArray.length; i++) {
+			sourceArray[i] = sourceArray[i] / sum;
 		}
-		return array;
+		return sourceArray;
 	}
 }

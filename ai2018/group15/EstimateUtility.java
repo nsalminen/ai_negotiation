@@ -32,9 +32,8 @@ public class EstimateUtility {
 	 * 
 	 * The estimation of the evaluation value for each possible Value for an Issue
 	 * is done by incrementing the weight of some value each time we have a bid with
-	 * this value. For each value, the final weight TODO (update comment, code has
-	 * changed) is the weight divided by the rank of the Issues.
-	 * 
+	 * this value. For each value, the final weight is updated with a value relative
+	 * to the total of the weights.
 	 * 
 	 * @return estimated utility space based on the bid ranking
 	 */

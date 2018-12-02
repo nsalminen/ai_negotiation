@@ -188,9 +188,7 @@ public class Group15_BS extends OfferingStrategy {
 
 			nextBid = bestOpponentBid;
 		} else {
-
-			if (opponentModel instanceof NoModel || userModel != null) { // NOTICE THAT HERE THE UNCERTAIN PROGRAM WONT
-																			// USE THE OPPONENT MODEL
+			if (opponentModel instanceof NoModel) {
 				/**
 				 * Enough time left -> Hardheaded and tit-for-tat (concede if you concede)
 				 * strategy myAction can take values : 1 = normal hard headed round, 2 = perform
@@ -206,7 +204,6 @@ public class Group15_BS extends OfferingStrategy {
 						myAction = 3;
 				}
 				nextBid = bs.GetNextBid(myAction, opponentBidDiff);
-
 			} else {
 				// Determine if opponent made a concession and if the concession has been
 				// handled by our agent yet

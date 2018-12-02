@@ -130,7 +130,7 @@ public class BidSelector {
 	}
 
 	/***
-	 * Updates window of list of bids
+	 * Updates window of list of bids and performs action.
 	 *
 	 * @param action        determines the action that needs to be performed
 	 * @param newDifference difference between most recent bid pair of opponent

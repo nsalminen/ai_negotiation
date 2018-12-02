@@ -15,6 +15,7 @@ import genius.core.bidding.BidDetails;
 import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
 import genius.core.boaframework.OpponentModel;
+import genius.core.issue.Issue;
 import genius.core.issue.IssueDiscrete;
 import genius.core.issue.Objective;
 import genius.core.issue.Value;
@@ -34,7 +35,7 @@ import genius.core.utility.EvaluatorDiscrete;
  * Group15:
  * adapted the hard headed frequency model using the paper [...] to compare sets of bids instead of on a pair basis
  */
-public class Group15_OM extends OpponentModel {
+public class Group15_HHOM extends OpponentModel {
 	// The constant factor in the weight update function
 	private double alpha;
 	// The constant factor in the weight update function
@@ -69,6 +70,8 @@ public class Group15_OM extends OpponentModel {
 	private boolean ConcessionHandled = false;
 	
 	ChiSquareTestImpl test;
+	
+	
 
 	@Override
 	public void init(NegotiationSession negotiationSession,
@@ -125,116 +128,68 @@ public class Group15_OM extends OpponentModel {
 		if (negotiationSession.getOpponentBidHistory().size() < 2) {
 			return;
 		}
-		
-		// Add the most recent opponent bid
+		int numberOfUnchanged = 0;
 		BidDetails oppBid = negotiationSession.getOpponentBidHistory()
 				.getHistory()
 				.get(negotiationSession.getOpponentBidHistory().size() - 1);
-		oppBidSet.add(oppBid);
-		
-		// If the set is full perform comparison
-		if(oppBidSet.size() == bidSetSize) {
-			System.out.println("updatingOM");
-			Set<Integer> issueSet = oppBid.getBid().getValues().keySet();
-			Set<Integer> noConcedeSet = new HashSet<Integer>();
-			// Per issue, perform pval test and compare new set's estimated utility with previous set's new estimated utility
-			boolean concession = false;
-			if(!prevOppBidSet.isEmpty()) {// if only one set has been filled no comparison can be made
-				// Compare the sets; hashmap format is HashMap<IssueNumber, HashMap<Value, frequency>>
-				HashMap<Integer, HashMap<Value, Integer>> fc = frequencyCount(oppBidSet);
-				HashMap<Integer, HashMap<Value, Integer>> prevFc = frequencyCount(prevOppBidSet);
-				
-				// Loop over all issues
-				for(Integer i : oppBid.getBid().getValues().keySet()) {
-					HashMap<Value, Integer> frequencyCount = fc.get(i);
-					HashMap<Value, Integer> prevFrequencyCount = prevFc.get(i);
-					
-					// Prepare test
-					double[] expected = new double[frequencyCount.keySet().size()];
-					long[] observed = new long[frequencyCount.keySet().size()];		
-					Arrays.fill(expected, 0);
-					Arrays.fill(observed, 0);
-					int iteration = 0;
-					for(Value v : frequencyCount.keySet()) {
-						expected[iteration] = frequencyCount.get(v);
-						if(prevFrequencyCount.containsKey(v)) { // frequencyCount can contain new values not present in prevFrequencyCount
-							observed[iteration] = prevFrequencyCount.get(v);
-						} else {
-							observed[iteration] = 0;
-						}
-						iteration++;
-					}
+		BidDetails prevOppBid = negotiationSession.getOpponentBidHistory()
+				.getHistory()
+				.get(negotiationSession.getOpponentBidHistory().size() - 2);
+		HashMap<Integer, Integer> lastDiffSet = determineDifference(prevOppBid,
+				oppBid);
 
-					double testResult = 1;
-					if(expected.length >= 2 && expected.length == observed.length) {
-						try {
-							testResult = test.chiSquareTest(expected, observed);
-							System.out.println("ChiSquared: " + testResult);
-						} catch (IllegalArgumentException e) {
-							e.printStackTrace();
-						} catch (MathException e) {
-							e.printStackTrace();
-						}
-					}
-					
-					if (testResult > 0.05) {//null hypothesis
-						noConcedeSet.add(i);
-					} else { // Null hypothesis rejected, check for concession
-						int EU = estimateSetUtility(frequencyCount, i);
-						int prevEU = estimateSetUtility(prevFrequencyCount, i);
-						System.out.println("EU : " + EU + " prevEU : " + prevEU);
-						concession = (EU < prevEU) ? true : concession; //if new estimated utility is lower then a concession has been made
-					}
-				}
-			} 
-			
-			if (concession && noConcedeSet.size() != issueSet.size()) {
-				for (Integer issueIndex : noConcedeSet) {
-					Objective issue = opponentUtilitySpace.getDomain()
-							.getObjectivesRoot().getObjective(issueIndex);
-					double currentWeight = opponentUtilitySpace.getWeight(issueIndex);
-					double newWeight = currentWeight + (alpha * Math.pow(time, beta));
-					
-					System.out.println("issue = " + issue.getName());
-					System.out.println("currentWeight = " + currentWeight);
-					System.out.println("newWeight = " + newWeight);
-					
-					opponentUtilitySpace.setWeight(issue, newWeight);
-				}
-			}
-			
-			// Then for each issue value that has been offered last time, a constant
-			// value is added to its corresponding ValueDiscrete.
-			// loop over all issues
-			for(BidDetails bid: oppBidSet) {
-				
-				try {
-					for (Entry<Objective, Evaluator> e : opponentUtilitySpace
-							.getEvaluators()) {
-						EvaluatorDiscrete value = (EvaluatorDiscrete) e.getValue();
-						IssueDiscrete issue = ((IssueDiscrete) e.getKey());
-						/*
-						 * Add constant learnValueAddition to the current preference of
-						 * the value to make it more important
-						 */
-						ValueDiscrete issuevalue = (ValueDiscrete) bid.getBid()
-								.getValue(issue.getNumber());
-						Integer eval = value.getEvaluationNotNormalized(issuevalue);
-						value.setEvaluation(issuevalue, (learnValueAddition + eval));
-					}
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-			}
-			
-			// Prepare for new set: prevBidSet contains no or an old bid set, copy bidSet to prevBidSet and empty bidSet
-			prevOppBidSet = (ArrayList<BidDetails>) oppBidSet.clone();
-			oppBidSet.clear();
-			updateConceeded(concession);
-			ConcessionHandled = false;
+		// count the number of changes in value
+		for (Integer i : lastDiffSet.keySet()) {
+			if (lastDiffSet.get(i) == 0)
+				numberOfUnchanged++;
 		}
-		
-		
+
+		// The total sum of weights before normalization.
+		double totalSum = 1D + goldenValue * numberOfUnchanged;
+		// The maximum possible weight
+		double maximumWeight = 1D - (amountOfIssues) * goldenValue / totalSum;
+
+		// re-weighing issues while making sure that the sum remains 1
+		for (Integer i : lastDiffSet.keySet()) {
+			Objective issue = opponentUtilitySpace.getDomain()
+					.getObjectivesRoot().getObjective(i);
+			double weight = opponentUtilitySpace.getWeight(i);
+			double newWeight;
+
+			if (lastDiffSet.get(i) == 0 && weight < maximumWeight) {
+				newWeight = (weight + goldenValue) / totalSum;
+			} else {
+				newWeight = weight / totalSum;
+			}
+			opponentUtilitySpace.setWeight(issue, newWeight);
+		}
+
+		// Then for each issue value that has been offered last time, a constant
+		// value is added to its corresponding ValueDiscrete.
+		try {
+			for (Entry<Objective, Evaluator> e : opponentUtilitySpace
+					.getEvaluators()) {
+				EvaluatorDiscrete value = (EvaluatorDiscrete) e.getValue();
+				IssueDiscrete issue = ((IssueDiscrete) e.getKey());
+				/*
+				 * add constant learnValueAddition to the current preference of
+				 * the value to make it more important
+				 */
+				ValueDiscrete issuevalue = (ValueDiscrete) oppBid.getBid()
+						.getValue(issue.getNumber());
+				Integer eval = value.getEvaluationNotNormalized(issuevalue);
+				value.setEvaluation(issuevalue, (learnValueAddition + eval));
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+			
+			double myUtil = opponentUtilitySpace.getUtility(oppBid.getBid());
+			double myUtilPrev = opponentUtilitySpace.getUtility(prevOppBid.getBid());
+			if(myUtil > myUtilPrev) {
+				updateConceeded(true);
+				ConcessionHandled = false;
+			}
 	}
 	
 	public void setConcessionHandled() {
@@ -286,7 +241,7 @@ public class Group15_OM extends OpponentModel {
 
 	@Override
 	public String getName() {
-		return "Group 15 Window Frequency Model";
+		return "Adapted HH Frequency Model";
 	}
 
 	@Override
@@ -357,4 +312,34 @@ public class Group15_OM extends OpponentModel {
 
 		return fcount;
 	}
+	
+	/**
+	 * Determines the difference between bids. For each issue, it is determined
+	 * if the value changed. If this is the case, a 1 is stored in a hashmap for
+	 * that issue, else a 0.
+	 * 
+	 * @param a
+	 *            bid of the opponent
+	 * @param another
+	 *            bid
+	 * @return
+	 */
+	private HashMap<Integer, Integer> determineDifference(BidDetails first,
+			BidDetails second) {
+
+		HashMap<Integer, Integer> diff = new HashMap<Integer, Integer>();
+		try {
+			for (Issue i : opponentUtilitySpace.getDomain().getIssues()) {
+				Value value1 = first.getBid().getValue(i.getNumber());
+				Value value2 = second.getBid().getValue(i.getNumber());
+				diff.put(i.getNumber(), (value1.equals(value2)) ? 0 : 1);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return diff;
+	}
+	
+	
 }

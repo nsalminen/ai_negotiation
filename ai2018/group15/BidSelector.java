@@ -9,7 +9,7 @@ import genius.core.boaframework.SortedOutcomeSpace;
 public class BidSelector {
 	// Sliding window
 	private SlidingWindow sw;
-	//
+	// Max sliding window size
 	private double maxSwSize;
 	// Max bidcount in window
 	private int maxBidCount;
